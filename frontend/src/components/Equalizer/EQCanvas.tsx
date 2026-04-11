@@ -30,6 +30,10 @@ interface DrawState {
   prevBass?: number;
   beatCooldown?: number;
   phase?: number;
+  // Lissajous: smoothed audio values to avoid abrupt shape changes
+  lissA?: number;   // smoothed a value
+  lissB?: number;   // smoothed b value
+  lissPhase?: number; // continuous phase accumulator
 }
 
 interface Particle {
@@ -177,16 +181,22 @@ const drawWaveform: DrawFn = (ctx, w, h, data, time) => {
 
 // ---------------------------------------------------------------------------
 // LISSAJOUS — parametric figure (이퀄4 레퍼런스)
-// Blue Lissajous curve, persistence traces, dark blue bg
+// Blue Lissajous curve, persistence traces, dark blue bg.
+// a:b는 고정 비율(3:2)을 기반으로 exponential smoothing으로 매우 서서히 변화.
+// 위상 delta는 연속적으로 누적되어 도형이 부드럽게 회전/변형됨.
 // ---------------------------------------------------------------------------
-const drawLissajous: DrawFn = (ctx, w, h, data, time, state) => {
-  if (!state.traceHistory) state.traceHistory = [];
+const drawLissajous: DrawFn = (ctx, w, h, data, _time, state) => {
+  if (!state.traceHistory)  state.traceHistory  = [];
+  if (state.lissA      === undefined) state.lissA      = 3.0;
+  if (state.lissB      === undefined) state.lissB      = 2.0;
+  if (state.lissPhase  === undefined) state.lissPhase  = 0.0;
 
   ctx.fillStyle = '#000814';
   ctx.fillRect(0, 0, w, h);
 
   const cx = w / 2, cy = h / 2;
-  const r = Math.min(w, h) * 0.38;
+  // Radius pulses gently with overall level, never jumps
+  const r = Math.min(w, h) * (0.34 + data.overallLevel * 0.06);
 
   // Outer frame rings
   ctx.strokeStyle = 'rgba(29,111,255,0.13)';
@@ -195,26 +205,46 @@ const drawLissajous: DrawFn = (ctx, w, h, data, time, state) => {
     ctx.beginPath(); ctx.arc(cx, cy, r * s, 0, Math.PI * 2); ctx.stroke();
   });
 
-  const a = 2 + Math.round(data.bassLevel * 3);
-  const b = 3 + Math.round(data.midLevel * 2);
-  const delta = time * 0.14;
+  // ── Smooth a & b with heavy low-pass (τ ≈ 120 frames ≈ 2 s at 60 fps) ──
+  // Target: 3:2 base ratio, bass nudges a, mid nudges b — max ±0.4 offset
+  const targetA = 3.0 + data.bassLevel * 0.4;
+  const targetB = 2.0 + data.midLevel  * 0.3;
+  const α = 0.012; // smoothing factor — lower = slower change
+  state.lissA! += (targetA - state.lissA!) * α;
+  state.lissB! += (targetB - state.lissB!) * α;
 
-  // Build trace for this frame
+  // ── Phase accumulates continuously — audio energy speeds it up ──
+  // At silence: ~0.008 rad/frame → full cycle ≈ 13 s
+  // At full signal: ~0.025 rad/frame → full cycle ≈ 4 s
+  state.lissPhase! += 0.008 + data.overallLevel * 0.017;
+
+  const a     = state.lissA!;
+  const b     = state.lissB!;
+  const delta = state.lissPhase!;
+
+  // Build trace (1200 points for smooth curve)
+  const steps = 1200;
   const trace: { x: number; y: number }[] = [];
-  for (let i = 0; i <= 900; i++) {
-    const t = (i / 900) * Math.PI * 2;
-    trace.push({ x: cx + r * Math.sin(a * t + delta), y: cy + r * Math.sin(b * t) });
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    trace.push({
+      x: cx + r * Math.sin(a * t + delta),
+      y: cy + r * Math.sin(b * t),
+    });
   }
-  state.traceHistory!.unshift(trace);
-  if (state.traceHistory!.length > 5) state.traceHistory!.pop();
 
-  // Draw persistence traces
+  // Persistence buffer — keep last 6 frames for afterglow
+  state.traceHistory!.unshift(trace);
+  if (state.traceHistory!.length > 6) state.traceHistory!.pop();
+
+  // Draw persistence traces (oldest = most faded)
   ctx.shadowColor = '#1d6fff';
   state.traceHistory!.forEach((tr, idx) => {
-    const alpha = (1 - idx / state.traceHistory!.length) * (0.28 + data.overallLevel * 0.45);
+    const age   = idx / state.traceHistory!.length;
+    const alpha = (1 - age) * (0.22 + data.overallLevel * 0.5);
     ctx.strokeStyle = `rgba(29,111,255,${alpha})`;
-    ctx.lineWidth = Math.max(0.5, 1.8 - idx * 0.35);
-    ctx.shadowBlur = Math.max(0, 10 - idx * 2.5);
+    ctx.lineWidth   = Math.max(0.4, 1.6 - idx * 0.25);
+    ctx.shadowBlur  = Math.max(0, 8 - idx * 1.8);
     ctx.beginPath();
     tr.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
     ctx.stroke();
@@ -224,11 +254,11 @@ const drawLissajous: DrawFn = (ctx, w, h, data, time, state) => {
   // Coordinate readout
   const fs = Math.max(9, w * 0.022);
   ctx.font = `${fs}px monospace`;
-  ctx.fillStyle = 'rgba(100,160,255,0.45)';
+  ctx.fillStyle = 'rgba(100,160,255,0.42)';
   ctx.textAlign = 'right';
-  ctx.fillText(`SEC: -45° 32' 52.3"`, w * 0.96, h * 0.09);
+  ctx.fillText(`SEC: -45° 32' 52.3"`,                                    w * 0.96, h * 0.09);
   ctx.fillText(`DEC: 520 43' ${(52 + data.overallLevel * 5).toFixed(1)}"`, w * 0.96, h * 0.15);
-  ctx.fillText(`MAG: ${(10 + data.overallLevel * 5).toFixed(1)}`, w * 0.96, h * 0.21);
+  ctx.fillText(`MAG: ${(10 + data.overallLevel * 5).toFixed(1)}`,         w * 0.96, h * 0.21);
 };
 
 // ---------------------------------------------------------------------------
