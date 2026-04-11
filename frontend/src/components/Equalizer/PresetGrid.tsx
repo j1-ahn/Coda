@@ -8,122 +8,23 @@ import type { EQPreset } from './EQCanvas';
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_PRESETS: EQPreset[] = [
-  // ── 이퀄 series ─────────────────────────────────────────────────────────
-  {
-    id: 'eclipse',
-    name: 'ECLIPSE',
-    imagePath: '/presets/이퀄2.png',
-    reactMode: 'pulse',
-    colorTint: '#00e5c8',
-    // Black-hole corona — bass pulse swells the teal glow
-  },
-  {
-    id: 'waveform',
-    name: 'WAVEFORM',
-    imagePath: '/presets/이퀄3.png',
-    reactMode: 'warp',
-    colorTint: '#00c853',
-    // Aphex Twin oscilloscope — warp distorts the green sine lines
-  },
-  {
-    id: 'lissajous',
-    name: 'LISSAJOUS',
-    imagePath: '/presets/이퀄4.png',
-    reactMode: 'ripple',
-    colorTint: '#1d6fff',
-    // Blue geometric Lissajous figure — ripple pulses the loops
-  },
-  {
-    id: 'sparks',
-    name: 'SPARKS',
-    imagePath: '/presets/이퀄5.png',
-    reactMode: 'pulse',
-    colorTint: '#ff6b2b',
-    // Fireworks explosion — pulse scales the ember burst
-  },
-  {
-    id: 'magenta',
-    name: 'MAGENTA',
-    imagePath: '/presets/이퀄6.png',
-    reactMode: 'chromatic',
-    colorTint: '#ff0090',
-    // Hot-pink blob — chromatic splits the neon edges on treble
-  },
-  {
-    id: 'ether',
-    name: 'ETHER',
-    imagePath: '/presets/이퀄7.png',
-    reactMode: 'ripple',
-    colorTint: '#7dd3fc',
-    // Soft blue cloud shape — ripple breathes the diffused edges
-  },
-  {
-    id: 'radial',
-    name: 'RADIAL',
-    imagePath: '/presets/이퀄8.png',
-    reactMode: 'pulse',
-    colorTint: '#ef4444',
-    // Circular waveform dial — pulse expands the radial bars
-  },
-
+  // ── 이퀄 series — each is a unique Canvas 2D visualizer ──────────────────
+  { id: 'eclipse',     name: 'ECLIPSE',     reactMode: 'pulse',     colorTint: '#00e5c8' },
+  { id: 'waveform',    name: 'WAVEFORM',    reactMode: 'warp',      colorTint: '#00c853' },
+  { id: 'lissajous',   name: 'LISSAJOUS',   reactMode: 'ripple',    colorTint: '#1d6fff' },
+  { id: 'sparks',      name: 'SPARKS',      reactMode: 'pulse',     colorTint: '#ff6b2b' },
+  { id: 'magenta',     name: 'MAGENTA',     reactMode: 'chromatic', colorTint: '#ff0090' },
+  { id: 'ether',       name: 'ETHER',       reactMode: 'ripple',    colorTint: '#7dd3fc' },
+  { id: 'radial',      name: 'RADIAL',      reactMode: 'pulse',     colorTint: '#ef4444' },
   // ── 이미지이퀄 series ────────────────────────────────────────────────────
-  {
-    id: 'terrain',
-    name: 'TERRAIN',
-    imagePath: '/presets/이미지이퀄3.png',
-    reactMode: 'warp',
-    colorTint: '#a16207',
-    // Dark mesh landscape — warp rolls the topology
-  },
-  {
-    id: 'orbit',
-    name: 'ORBIT',
-    imagePath: '/presets/이미지이퀄4.png',
-    reactMode: 'pulse',
-    colorTint: '#60a5fa',
-    // Planet glow auth screen — pulse swells the celestial corona
-  },
-  {
-    id: 'pixel',
-    name: 'PIXEL',
-    imagePath: '/presets/이미지이퀄5.png',
-    reactMode: 'chromatic',
-    colorTint: '#f59e0b',
-    // Pixel-art figure — chromatic aberration splits the dot matrix
-  },
-  {
-    id: 'bloom',
-    name: 'BLOOM',
-    imagePath: '/presets/이미지이퀄6.png',
-    reactMode: 'ripple',
-    colorTint: '#fb7185',
-    // Watercolor flower vase — ripple shimmers the petals
-  },
-  {
-    id: 'horizon',
-    name: 'HORIZON',
-    imagePath: '/presets/이미지이퀄7.png',
-    reactMode: 'warp',
-    colorTint: '#f97316',
-    // Sky-to-sunset gradient — warp undulates the colour bands
-  },
-  {
-    id: 'singularity',
-    name: 'SINGULARITY',
-    imagePath: '/presets/이미지이퀄8.png',
-    reactMode: 'ripple',
-    colorTint: '#6366f1',
-    // Jon Hopkins player — ripple traces the waveform spine
-  },
-
+  { id: 'terrain',     name: 'TERRAIN',     reactMode: 'warp',      colorTint: '#a16207' },
+  { id: 'orbit',       name: 'ORBIT',       reactMode: 'pulse',     colorTint: '#60a5fa' },
+  { id: 'pixel',       name: 'PIXEL',       reactMode: 'chromatic', colorTint: '#f59e0b' },
+  { id: 'bloom',       name: 'BLOOM',       reactMode: 'ripple',    colorTint: '#fb7185' },
+  { id: 'horizon',     name: 'HORIZON',     reactMode: 'warp',      colorTint: '#f97316' },
+  { id: 'singularity', name: 'SINGULARITY', reactMode: 'ripple',    colorTint: '#6366f1' },
   // ── Custom ──────────────────────────────────────────────────────────────
-  {
-    id: 'custom',
-    name: 'CUSTOM',
-    imagePath: '',
-    reactMode: 'pulse',
-    colorTint: '#c4a882',
-  },
+  { id: 'custom',      name: 'CUSTOM',      reactMode: 'pulse',     colorTint: '#c4a882' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -190,19 +91,9 @@ function PresetCard({ preset, isSelected, onSelect, onCustomImage }: PresetCardP
       aria-pressed={isSelected}
       aria-label={preset.name}
     >
-      {/* Background — image or placeholder */}
-      {preset.imagePath !== '' && preset.id !== 'custom' ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={preset.imagePath}
-          alt={preset.name}
-          className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      ) : isCustom ? (
-        /* Custom placeholder */
+      {/* Background — color tint swatch for all presets */}
+      {isCustom ? (
+        /* Custom: + icon placeholder */
         <div
           className="absolute inset-0 flex items-center justify-center"
           style={{ background: '#d4cfc6' }}
