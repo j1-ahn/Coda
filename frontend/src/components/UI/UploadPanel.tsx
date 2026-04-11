@@ -187,7 +187,7 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
             className={[
               'relative flex flex-col items-center justify-center',
               'border border-dashed cursor-pointer',
-              'transition-all duration-200 select-none h-[72px]',
+              'transition-all duration-200 select-none h-[57px]',
               bgDragOver
                 ? 'border-ink-500 bg-cream-200'
                 : 'border-cream-300 bg-cream-50 hover:bg-cream-200',

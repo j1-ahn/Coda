@@ -113,7 +113,11 @@ export default function VFXPanel() {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-3 overflow-y-auto">
+    <div className="flex flex-col">
+      <div className="flex items-center gap-2 px-3 py-2 bg-cream-200 border-b border-cream-300 shrink-0">
+        <span className="label-caps">VFX</span>
+      </div>
+    <div className="flex flex-col gap-4 p-3">
 
       {/* ── Bloom ────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-2">
@@ -201,6 +205,7 @@ export default function VFXPanel() {
       <p className="label-caps text-ink-300 text-center">
         변경사항은 캔버스에 실시간 반영됩니다
       </p>
+    </div>
     </div>
   );
 }

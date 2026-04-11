@@ -93,9 +93,10 @@ function PanelSection({
 function ImageTab() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto divide-y divide-cream-300">
-      {/* 배경 + VFX — 구분선 없이 바짝 붙임 */}
+      {/* 배경 + VFX */}
       <div className="flex flex-col shrink-0">
         <UploadPanel mode="background" />
+        <div className="border-t border-cream-300" />
         <VFXPanel />
       </div>
       <PanelSection title="Loop Animation">
