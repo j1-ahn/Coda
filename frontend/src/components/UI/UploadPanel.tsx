@@ -81,7 +81,7 @@ function SpinnerIcon() {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export default function UploadPanel() {
+export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'background' | 'audio' }) {
   const {
     projectId,
     scenes,
@@ -205,63 +205,51 @@ export default function UploadPanel() {
 
   // ────────────────────────────────────────────────────────────────────────
 
+  const bgSection = (
+    <div>
+      <SectionLabel>배경 이미지</SectionLabel>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setBgDragOver(true); }}
+        onDragLeave={() => setBgDragOver(false)}
+        onDrop={handleBgDrop}
+        onClick={() => bgInputRef.current?.click()}
+        className={`
+          relative flex flex-col items-center justify-center
+          border border-dashed cursor-pointer
+          transition-all duration-200 select-none h-[90px]
+          ${bgDragOver
+            ? 'border-ink-500 bg-cream-200'
+            : 'border-cream-300 bg-cream-50 hover:bg-cream-200'
+          }
+        `}
+      >
+        {bgPreview ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={bgPreview} alt="bg preview" className="absolute inset-0 w-full h-full object-cover opacity-70" />
+            <div className="relative z-10 flex flex-col items-center gap-1">
+              <span className="text-[10px] bg-cream-100/80 px-2 py-0.5 text-ink-700">
+                {activeScene?.background.fileName ?? '이미지'}
+              </span>
+              <span className="text-[9px] text-ink-500">클릭하여 교체</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-1.5 pointer-events-none">
+            <UploadIcon className="w-5 h-5 text-ink-300" />
+            <span className="label-caps text-ink-500">드래그 앤 드롭 또는 클릭</span>
+            <span className="text-[10px] text-ink-300">PNG · JPG · WEBP · MP4</span>
+          </div>
+        )}
+      </div>
+      <input ref={bgInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleBgFileChange} />
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-3 p-3 h-full overflow-y-auto">
-      {/* ── Section: Background ─────────────────────────────────────────── */}
-      <div>
-        <SectionLabel>배경 이미지</SectionLabel>
-
-        {/* Drop zone */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); setBgDragOver(true); }}
-          onDragLeave={() => setBgDragOver(false)}
-          onDrop={handleBgDrop}
-          onClick={() => bgInputRef.current?.click()}
-          className={`
-            relative flex flex-col items-center justify-center
-            border border-dashed cursor-pointer
-            transition-all duration-200 select-none h-[90px]
-            ${bgDragOver
-              ? 'border-ink-500 bg-cream-200'
-              : 'border-cream-300 bg-cream-50 hover:bg-cream-200'
-            }
-          `}
-        >
-          {bgPreview ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={bgPreview}
-                alt="bg preview"
-                className="absolute inset-0 w-full h-full object-cover opacity-70"
-              />
-              <div className="relative z-10 flex flex-col items-center gap-1">
-                <span className="text-[10px] bg-cream-100/80 px-2 py-0.5 text-ink-700">
-                  {activeScene?.background.fileName ?? '이미지'}
-                </span>
-                <span className="text-[9px] text-ink-500">클릭하여 교체</span>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center gap-1.5 pointer-events-none">
-              <UploadIcon className="w-5 h-5 text-ink-300" />
-              <span className="label-caps text-ink-500">드래그 앤 드롭 또는 클릭</span>
-              <span className="text-[10px] text-ink-300">PNG · JPG · WEBP · MP4</span>
-            </div>
-          )}
-        </div>
-
-        <input
-          ref={bgInputRef}
-          type="file"
-          accept="image/*,video/*"
-          className="hidden"
-          onChange={handleBgFileChange}
-        />
-      </div>
-
-      {/* ── Divider ──────────────────────────────────────────────────────── */}
-      <div className="border-t border-cream-300" />
+      {mode !== 'audio'  && bgSection}
+      {mode === 'all'    && <div className="border-t border-cream-300" />}
 
       {/* ── Section: Audio Tracks ────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col gap-2 min-h-0">

@@ -47,10 +47,10 @@ function SceneLoading() {
 type TabId = 'STUDIO' | 'EQ & VFX' | 'LYRIC' | 'RENDER';
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'STUDIO',   label: 'STUDIO'  },
-  { id: 'EQ & VFX', label: 'EQ&VFX' },
-  { id: 'LYRIC',    label: 'LYRIC'   },
-  { id: 'RENDER',   label: 'RENDER'  },
+  { id: 'STUDIO',   label: 'LOADER' },
+  { id: 'EQ & VFX', label: 'EQ'    },
+  { id: 'LYRIC',    label: 'LYRIC'  },
+  { id: 'RENDER',   label: 'RENDER' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -91,25 +91,25 @@ function PanelSection({
 }
 
 // ---------------------------------------------------------------------------
-// STUDIO Tab — 소스 관리
+// STUDIO Tab — 배경 + 오디오 업로드 + 타이틀
 // ---------------------------------------------------------------------------
 
 function StudioTab() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto divide-y divide-cream-300">
       <UploadPanel />
-      <PanelSection title="재생">
-        <AudioPlayer />
+      <PanelSection title="타이틀">
+        <TitleCustomPanel />
       </PanelSection>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// EQ & VFX Tab — 이퀄라이저 + VFX + 루프
+// EQ Tab — 이퀄라이저 + 플레이리스트
 // ---------------------------------------------------------------------------
 
-function EQVFXTab() {
+function EQTab() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* EQ — flex-1, scrollable */}
@@ -117,20 +117,12 @@ function EQVFXTab() {
         <EqualizerTab />
       </div>
 
-      {/* VFX — 하단 고정 */}
+      {/* 플레이리스트 — 하단 고정 */}
       <div className="shrink-0 border-t-2 border-cream-300">
         <div className="flex items-center gap-2 px-3 py-2 bg-cream-200 border-b border-cream-300">
-          <span className="label-caps">VFX</span>
+          <span className="label-caps">Playlist</span>
         </div>
-        <VFXPanel />
-      </div>
-
-      {/* Loop */}
-      <div className="shrink-0 border-t border-cream-300">
-        <div className="flex items-center gap-2 px-3 py-2 bg-cream-200 border-b border-cream-300">
-          <span className="label-caps">Loop Animation</span>
-        </div>
-        <LoopPanel />
+        <AudioPlayer />
       </div>
     </div>
   );
@@ -217,9 +209,14 @@ function RenderTab() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto divide-y divide-cream-300">
 
-      {/* 타이틀 설정 */}
-      <PanelSection title="타이틀">
-        <TitleCustomPanel />
+      {/* VFX */}
+      <PanelSection title="VFX">
+        <VFXPanel />
+      </PanelSection>
+
+      {/* Loop */}
+      <PanelSection title="Loop Animation">
+        <LoopPanel />
       </PanelSection>
 
       {/* 렌더 설정 */}
@@ -438,7 +435,7 @@ export default function Home() {
           {/* Tab content */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             {activeTab === 'STUDIO'   && <StudioTab />}
-            {activeTab === 'EQ & VFX' && <EQVFXTab />}
+            {activeTab === 'EQ & VFX' && <EQTab />}
             {activeTab === 'LYRIC'    && <LyricTab />}
             {activeTab === 'RENDER'   && <RenderTab />}
           </div>
