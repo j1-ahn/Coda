@@ -23,16 +23,16 @@
  * └──────────────────────────────────────────────────┘
  */
 
-import React, { useRef, useMemo, Suspense } from 'react';
+import React, { useRef, useMemo, Suspense, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture, OrthographicCamera } from '@react-three/drei';
+import * as THREE from 'three';
 import {
   EffectComposer,
   Bloom,
   Noise,
   Vignette,
 } from '@react-three/postprocessing';
-import * as THREE from 'three';
 
 import { useCodaStore, Scene, ExternalAsset, VFXParams } from '@/store/useCodaStore';
 import TitleLayer from './TitleLayer';
@@ -41,33 +41,27 @@ import { useParallax } from '@/hooks/useParallax';
 import { LoopShaderMesh } from './LoopShader';
 
 // ---------------------------------------------------------------------------
-// Pass 1: Background
+// Pass 1: Background — image or video
 // ---------------------------------------------------------------------------
 
 interface BackgroundMeshProps {
   scene: Scene;
 }
 
-function BackgroundMesh({ scene }: BackgroundMeshProps) {
+/** Image background — uses drei useTexture */
+function ImageBackgroundMesh({ scene }: BackgroundMeshProps) {
   const meshRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
-
   const texture = useTexture(scene.background.url ?? '');
-
-  // useParallax 훅으로 마우스 기반 오프셋 계산
   const parallaxPos = useParallax(0.08);
 
-  // Parallax: 매 프레임 오프셋 적용
   useFrame(() => {
     if (!meshRef.current || !scene.effects.parallaxEnabled) return;
     meshRef.current.position.x = parallaxPos.current.x;
     meshRef.current.position.y = parallaxPos.current.y;
   });
 
-  if (!scene.background.url) return null;
-
   const { loopMode, loopStrength } = scene.effects;
-
   return (
     <group ref={meshRef}>
       <LoopShaderMesh
@@ -78,6 +72,63 @@ function BackgroundMesh({ scene }: BackgroundMeshProps) {
       />
     </group>
   );
+}
+
+/** Video background — creates HTMLVideoElement + VideoTexture */
+function VideoBackgroundMesh({ scene }: BackgroundMeshProps) {
+  const meshRef = useRef<THREE.Group>(null);
+  const { viewport } = useThree();
+  const parallaxPos = useParallax(0.08);
+
+  const { video, texture } = useMemo(() => {
+    const vid = document.createElement('video');
+    vid.src = scene.background.url ?? '';
+    vid.loop = true;
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.autoplay = true;
+    vid.play().catch(() => {});
+    const tex = new THREE.VideoTexture(vid);
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    return { video: vid, texture: tex };
+  }, [scene.background.url]);
+
+  useEffect(() => {
+    return () => {
+      video.pause();
+      video.src = '';
+      texture.dispose();
+    };
+  }, [video, texture]);
+
+  useFrame(() => {
+    if (meshRef.current && scene.effects.parallaxEnabled) {
+      meshRef.current.position.x = parallaxPos.current.x;
+      meshRef.current.position.y = parallaxPos.current.y;
+    }
+    texture.needsUpdate = true;
+  });
+
+  const { loopMode, loopStrength } = scene.effects;
+  return (
+    <group ref={meshRef}>
+      <LoopShaderMesh
+        texture={texture}
+        mode={loopMode}
+        strength={loopStrength}
+        scale={[viewport.width, viewport.height, 1]}
+      />
+    </group>
+  );
+}
+
+function BackgroundMesh({ scene }: BackgroundMeshProps) {
+  if (!scene.background.url) return null;
+  if (scene.background.type === 'video') {
+    return <VideoBackgroundMesh scene={scene} />;
+  }
+  return <ImageBackgroundMesh scene={scene} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -271,6 +322,7 @@ export default function MainScene() {
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.0,
           powerPreference: 'high-performance',
+          preserveDrawingBuffer: true,   // MediaRecorder 캡처에 필요
         }}
         dpr={[1, 2]}
         camera={{ position: [0, 0, 5], fov: 45 }}

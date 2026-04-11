@@ -74,6 +74,9 @@ export interface VFXParams {
 // ---------------------------------------------------------------------------
 
 export interface CodaStore {
+  // 프로젝트 ID (백엔드 업로드 키)
+  projectId: string;
+
   // 레이아웃/익스포트
   exportFormat: '16:9' | '9:16' | 'both';
 
@@ -209,6 +212,7 @@ const initialScene = makeDefaultScene(0);
 export const useCodaStore = create<CodaStore>()(
   immer((set, _get) => ({
     // ---- initial state ----
+    projectId: nanoid(),
     exportFormat: '16:9',
 
     scenes: [initialScene],

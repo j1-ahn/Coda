@@ -3,6 +3,7 @@ export_router.py
 FFmpeg NVENC 듀얼 익스포트 (16:9 / 9:16).
 
 엔드포인트:
+  POST /api/export/upload             — 배경 이미지/영상 + 오디오 업로드
   POST /api/export/render             — 렌더링 작업 시작 (즉시 반환, 백그라운드 처리)
   GET  /api/export/status/{job_id}    — 작업 상태 조회
 """
@@ -17,7 +18,7 @@ import uuid
 from pathlib import Path
 from typing import Dict, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,12 @@ _jobs: Dict[str, dict] = {}
 # ---------------------------------------------------------------------------
 
 
+class UploadResponse(BaseModel):
+    project_id: str
+    background_path: str | None
+    audio_path: str | None
+
+
 class RenderRequest(BaseModel):
     project_id: str
     export_format: str = "both"   # "16:9" | "9:16" | "both"
@@ -74,6 +81,13 @@ class StatusResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # FFmpeg helpers
 # ---------------------------------------------------------------------------
+
+
+def _find_project_file(project_id: str, kind: str) -> str | None:
+    """outputs/ 아래에서 {project_id}_{kind}.* 파일을 찾아 경로 반환."""
+    for f in _OUTPUTS_DIR.glob(f"{project_id}_{kind}.*"):
+        return str(f)
+    return None
 
 
 def _ffmpeg_available() -> bool:
@@ -121,11 +135,14 @@ async def _render_task(job_id: str, req: RenderRequest) -> None:
     output_16x9 = str(_OUTPUTS_DIR / f"{req.output_name}_16x9.mp4")
     output_9x16 = str(_OUTPUTS_DIR / f"{req.output_name}_9x16.mp4")
 
-    # 프로젝트 소스 파일 경로 (실제 환경에서는 project_id 기반 조회)
-    # 여기서는 outputs/ 아래에 image/audio가 있다고 가정, 없으면 mock
-    image_path = str(_OUTPUTS_DIR / f"{req.project_id}_image.png")
-    audio_path = str(_OUTPUTS_DIR / f"{req.project_id}_audio.mp3")
-    duration = 30.0  # 기본값; 실제로는 프로젝트 메타에서 가져옴
+    # 업로드된 파일 탐색 (확장자 무관)
+    image_path = _find_project_file(req.project_id, "image") or str(
+        _OUTPUTS_DIR / f"{req.project_id}_image.png"
+    )
+    audio_path = _find_project_file(req.project_id, "audio") or str(
+        _OUTPUTS_DIR / f"{req.project_id}_audio.mp3"
+    )
+    duration = 30.0  # 기본값; 실제로는 ffprobe 또는 업로드 메타에서 가져옴
 
     use_ffmpeg = _ffmpeg_available() and (
         Path(image_path).exists() and Path(audio_path).exists()
@@ -194,6 +211,49 @@ async def _render_task(job_id: str, req: RenderRequest) -> None:
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+
+@router.post("/upload", response_model=UploadResponse, summary="배경/오디오 파일 업로드")
+async def upload_project_files(
+    project_id: str = Form(...),
+    background: UploadFile | None = File(None),
+    audio: UploadFile | None = File(None),
+) -> UploadResponse:
+    """
+    배경 이미지/영상과 오디오 파일을 서버에 저장합니다.
+
+    - `project_id` — 고유 식별자 (nanoid 등)
+    - `background`  — PNG · JPG · WEBP · MP4 (선택)
+    - `audio`       — MP3 · WAV · M4A (선택)
+
+    저장 경로: outputs/{project_id}_image.{ext}, outputs/{project_id}_audio.{ext}
+    """
+    _ensure_outputs_dir()
+
+    bg_path: str | None = None
+    audio_path: str | None = None
+
+    if background:
+        suffix = Path(background.filename or "bg").suffix or ".bin"
+        dest = _OUTPUTS_DIR / f"{project_id}_image{suffix}"
+        content = await background.read()
+        dest.write_bytes(content)
+        bg_path = str(dest)
+        logger.info("Saved background: %s (%d bytes)", dest, len(content))
+
+    if audio:
+        suffix = Path(audio.filename or "audio").suffix or ".bin"
+        dest = _OUTPUTS_DIR / f"{project_id}_audio{suffix}"
+        content = await audio.read()
+        dest.write_bytes(content)
+        audio_path = str(dest)
+        logger.info("Saved audio: %s (%d bytes)", dest, len(content))
+
+    return UploadResponse(
+        project_id=project_id,
+        background_path=bg_path,
+        audio_path=audio_path,
+    )
 
 
 @router.post("/render", response_model=RenderResponse)

@@ -83,6 +83,7 @@ function SpinnerIcon() {
 
 export default function UploadPanel() {
   const {
+    projectId,
     scenes,
     activeSceneId,
     audioTracks,
@@ -94,6 +95,21 @@ export default function UploadPanel() {
     setWhisperSegments,
     setActiveAudioTrack,
   } = useCodaStore();
+
+  // ── Backend upload helper ────────────────────────────────────────────────
+  const uploadToBackend = useCallback(
+    async (kind: 'background' | 'audio', file: File) => {
+      try {
+        const form = new FormData();
+        form.append('project_id', projectId);
+        form.append(kind === 'background' ? 'background' : 'audio', file, file.name);
+        await fetch('/api/export/upload', { method: 'POST', body: form });
+      } catch {
+        // 백엔드 미실행 시 무시 (프론트 작동에 영향 없음)
+      }
+    },
+    [projectId]
+  );
 
   const activeScene = scenes.find((s) => s.id === activeSceneId);
   const bgPreview = activeScene?.background.url ?? null;
@@ -113,8 +129,9 @@ export default function UploadPanel() {
         url,
         fileName: file.name,
       });
+      uploadToBackend('background', file);
     },
-    [activeSceneId, updateSceneBackground]
+    [activeSceneId, updateSceneBackground, uploadToBackend]
   );
 
   const handleBgDrop = (e: React.DragEvent) => {
@@ -144,9 +161,10 @@ export default function UploadPanel() {
         const dur = await loadAudioDuration(url);
         useCodaStore.getState().setWhisperSegments(id, [], dur);
         useCodaStore.getState().setAudioTrackProcessing(id, 'idle');
+        uploadToBackend('audio', file);
       }
     },
-    [audioTracks.length, addAudioTrack]
+    [audioTracks.length, addAudioTrack, uploadToBackend]
   );
 
   const handleAudioDrop = async (e: React.DragEvent) => {

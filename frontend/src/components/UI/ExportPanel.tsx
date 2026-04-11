@@ -2,6 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCodaStore } from '@/store/useCodaStore';
+import {
+  startCompositeRender,
+  downloadBlob,
+  type CompositeRenderHandle,
+} from '@/lib/compositeRenderer';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -10,40 +15,8 @@ import { useCodaStore } from '@/store/useCodaStore';
 type JobStatus =
   | { phase: 'idle' }
   | { phase: 'rendering'; progress: number; message: string }
-  | { phase: 'done'; urls: { '16:9'?: string; '9:16'?: string } }
+  | { phase: 'done'; blob: Blob; filename: string }
   | { phase: 'error'; message: string };
-
-// ---------------------------------------------------------------------------
-// Format Selector Button
-// ---------------------------------------------------------------------------
-
-function FormatBtn({
-  label,
-  active,
-  star,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  star?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        px-3 py-1.5 rounded-none border text-xs font-medium tracking-wide transition-colors
-        ${active
-          ? 'bg-ink-900 border-ink-900 text-cream-100'
-          : 'border-cream-300 text-ink-500 hover:text-ink-900 hover:border-ink-500'
-        }
-      `}
-    >
-      {label}
-      {star && <span className="ml-1 text-[10px]">★</span>}
-    </button>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Title Mode Button
@@ -64,7 +37,7 @@ function ProgressBar({ progress }: { progress: number }) {
     <div className="w-full bg-cream-300 h-1 overflow-hidden">
       <div
         className="h-full bg-ink-900 transition-all duration-300"
-        style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+        style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
       />
     </div>
   );
@@ -75,85 +48,83 @@ function ProgressBar({ progress }: { progress: number }) {
 // ---------------------------------------------------------------------------
 
 export default function ExportPanel() {
-  const { exportFormat, setExportFormat, titleMode, setTitleMode, vfxParams, scenes, audioTracks } =
+  const { exportFormat, setExportFormat, titleMode, setTitleMode, audioTracks, activeAudioTrackId } =
     useCodaStore();
 
   const [jobStatus, setJobStatus] = useState<JobStatus>({ phase: 'idle' });
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // ── Polling ──────────────────────────────────────────────────────────────
-
-  const startPolling = useCallback((jobId: string) => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/export/status/${jobId}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (data.status === 'done') {
-          clearInterval(pollRef.current!);
-          setJobStatus({ phase: 'done', urls: data.urls ?? {} });
-        } else if (data.status === 'error') {
-          clearInterval(pollRef.current!);
-          setJobStatus({ phase: 'error', message: data.message ?? '렌더 오류 발생' });
-        } else {
-          setJobStatus({
-            phase: 'rendering',
-            progress: data.progress ?? 0,
-            message: data.message ?? '렌더 중...',
-          });
-        }
-      } catch (err) {
-        clearInterval(pollRef.current!);
-        const msg = err instanceof Error ? err.message : '폴링 실패';
-        setJobStatus({ phase: 'error', message: msg });
-      }
-    }, 2000);
-  }, []);
-
-  // Clean up on unmount
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+  const renderHandleRef = useRef<CompositeRenderHandle | null>(null);
 
   // ── Render start ─────────────────────────────────────────────────────────
 
-  const handleRender = async () => {
-    setJobStatus({ phase: 'rendering', progress: 0, message: '렌더 요청 중...' });
-    try {
-      const payload = {
-        format: exportFormat,
-        titleMode,
-        vfxParams,
-        sceneIds: scenes.map((s) => s.id),
-        audioTrackIds: audioTracks.map((t) => t.id),
-      };
-
-      const res = await fetch('/api/export/render', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail ?? `HTTP ${res.status}`);
-      }
-
-      const { job_id } = await res.json();
-      startPolling(job_id);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : '렌더 시작 실패';
-      setJobStatus({ phase: 'error', message: msg });
+  const handleRender = useCallback(async () => {
+    const container = document.getElementById('studio-canvas-container');
+    if (!container) {
+      setJobStatus({ phase: 'error', message: 'canvas container를 찾을 수 없습니다.' });
+      return;
     }
-  };
 
-  const handleReset = () => {
-    if (pollRef.current) clearInterval(pollRef.current);
+    const rect = container.getBoundingClientRect();
+    const w = Math.round(rect.width)  || 1920;
+    const h = Math.round(rect.height) || 1080;
+
+    // 활성 오디오 트랙 URL
+    const activeTrack = audioTracks.find((t) => t.id === activeAudioTrackId);
+    const audioSrc = activeTrack?.url ?? null;
+    const durationSec = activeTrack?.durationSec ?? 10;
+
+    setJobStatus({ phase: 'rendering', progress: 0, message: '렌더 준비 중...' });
+
+    const [handle, renderPromise] = startCompositeRender(container, {
+      width: w,
+      height: h,
+      fps: 30,
+      durationSec,
+      audioSrc,
+      onProgress: (p) =>
+        setJobStatus({
+          phase: 'rendering',
+          progress: p,
+          message: `렌더 중... ${Math.round(p * 100)}%`,
+        }),
+    });
+    renderHandleRef.current = handle;
+
+    try {
+      const blob = await renderPromise;
+      if (!blob) {
+        setJobStatus({ phase: 'error', message: '렌더 취소됨' });
+        return;
+      }
+      const ext = blob.type.includes('webm') ? 'webm' : 'mp4';
+      const filename = `coda_export_${Date.now()}.${ext}`;
+      setJobStatus({ phase: 'done', blob, filename });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '렌더 오류 발생';
+      setJobStatus({ phase: 'error', message: msg });
+    } finally {
+      renderHandleRef.current = null;
+    }
+  }, [audioTracks, activeAudioTrackId]);
+
+  const handleStop = useCallback(() => {
+    renderHandleRef.current?.stop();
+  }, []);
+
+  const handleReset = useCallback(() => {
     setJobStatus({ phase: 'idle' });
-  };
+  }, []);
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  const handleDownload = useCallback(() => {
+    if (jobStatus.phase !== 'done') return;
+    downloadBlob(jobStatus.blob, jobStatus.filename);
+  }, [jobStatus]);
+
+  // Cleanup on unmount
+  useEffect(() => () => { renderHandleRef.current?.stop(); }, []);
 
   const isRendering = jobStatus.phase === 'rendering';
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="flex items-center gap-6 px-5 py-3 border-t border-cream-300 bg-cream-200 flex-wrap">
@@ -162,22 +133,19 @@ export default function ExportPanel() {
       <div className="flex items-center gap-2">
         <FieldLabel>Format</FieldLabel>
         <div className="flex items-center gap-1">
-          <FormatBtn
-            label="16:9"
-            active={exportFormat === '16:9'}
-            onClick={() => setExportFormat('16:9')}
-          />
-          <FormatBtn
-            label="9:16"
-            active={exportFormat === '9:16'}
-            onClick={() => setExportFormat('9:16')}
-          />
-          <FormatBtn
-            label="BOTH"
-            active={exportFormat === 'both'}
-            star
-            onClick={() => setExportFormat('both')}
-          />
+          {(['16:9', '9:16', 'both'] as const).map((fmt) => (
+            <button
+              key={fmt}
+              onClick={() => setExportFormat(fmt)}
+              className={`px-3 py-1.5 rounded-none border text-xs font-medium tracking-wide transition-colors ${
+                exportFormat === fmt
+                  ? 'bg-ink-900 border-ink-900 text-cream-100'
+                  : 'border-cream-300 text-ink-500 hover:text-ink-900 hover:border-ink-500'
+              }`}
+            >
+              {fmt === 'both' ? 'BOTH ★' : fmt}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -186,19 +154,17 @@ export default function ExportPanel() {
 
       {/* Title mode */}
       <div className="flex items-center gap-2">
-        <FieldLabel>Title Mode</FieldLabel>
+        <FieldLabel>Title</FieldLabel>
         <div className="flex items-center gap-1">
           {TITLE_MODES.map((m) => (
             <button
               key={m.value}
               onClick={() => setTitleMode(m.value)}
-              className={`
-                px-2.5 py-1 rounded-none border text-[11px] tracking-wide transition-colors
-                ${titleMode === m.value
+              className={`px-2.5 py-1 rounded-none border text-[11px] tracking-wide transition-colors ${
+                titleMode === m.value
                   ? 'bg-ink-900 border-ink-900 text-cream-100'
                   : 'border-cream-300 text-ink-500 hover:border-ink-500 hover:text-ink-900'
-                }
-              `}
+              }`}
             >
               {m.label}
             </button>
@@ -210,49 +176,50 @@ export default function ExportPanel() {
       <div className="w-px h-6 bg-cream-300" />
 
       {/* Render button + status */}
-      <div className="flex items-center gap-3 flex-1 min-w-[260px]">
-        {/* Render / Reset button */}
-        {jobStatus.phase === 'done' || jobStatus.phase === 'error' ? (
+      <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+
+        {/* Action button */}
+        {jobStatus.phase === 'idle' && (
+          <button
+            onClick={handleRender}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest bg-ink-900 text-cream-100 hover:bg-ink-700 transition-colors whitespace-nowrap"
+          >
+            <PlayIcon className="w-3.5 h-3.5" />
+            렌더 시작
+          </button>
+        )}
+
+        {jobStatus.phase === 'rendering' && (
+          <button
+            onClick={handleStop}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest border border-ink-500 text-ink-700 hover:bg-cream-300 transition-colors whitespace-nowrap"
+          >
+            <StopIcon className="w-3.5 h-3.5" />
+            중단
+          </button>
+        )}
+
+        {(jobStatus.phase === 'done' || jobStatus.phase === 'error') && (
           <button
             onClick={handleReset}
             className="px-4 py-2 rounded-none border border-cream-300 text-xs text-ink-500 hover:text-ink-900 hover:border-ink-500 transition-colors whitespace-nowrap"
           >
             다시 렌더
           </button>
-        ) : (
-          <button
-            onClick={handleRender}
-            disabled={isRendering}
-            className={`
-              flex items-center gap-2 px-6 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest transition-colors whitespace-nowrap
-              ${isRendering
-                ? 'bg-cream-300 border border-cream-300 text-ink-300 cursor-not-allowed'
-                : 'bg-ink-900 text-cream-100 hover:bg-ink-700'
-              }
-            `}
-          >
-            {isRendering ? (
-              <>
-                <SpinnerIcon className="w-3.5 h-3.5 animate-spin" />
-                렌더 중...
-              </>
-            ) : (
-              <>
-                <PlayIcon className="w-3.5 h-3.5" />
-                렌더 시작
-              </>
-            )}
-          </button>
         )}
 
         {/* Status area */}
         <div className="flex-1 min-w-0">
+          {jobStatus.phase === 'idle' && (
+            <span className="label-caps text-ink-300">렌더 준비 완료</span>
+          )}
+
           {jobStatus.phase === 'rendering' && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-ink-500">{jobStatus.message}</span>
                 <span className="font-mono text-[11px] text-ink-900 tabular-nums">
-                  {jobStatus.progress}%
+                  {Math.round(jobStatus.progress * 100)}%
                 </span>
               </div>
               <ProgressBar progress={jobStatus.progress} />
@@ -262,23 +229,18 @@ export default function ExportPanel() {
           {jobStatus.phase === 'done' && (
             <div className="flex items-center gap-3">
               <span className="text-[11px] text-ink-700">✓ 렌더 완료</span>
-              {jobStatus.urls['16:9'] && (
-                <DownloadLink href={jobStatus.urls['16:9']} label="16:9 다운로드" />
-              )}
-              {jobStatus.urls['9:16'] && (
-                <DownloadLink href={jobStatus.urls['9:16']} label="9:16 다운로드" />
-              )}
+              <button
+                onClick={handleDownload}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-none border border-ink-500 text-[11px] text-ink-700 hover:bg-cream-300 transition-colors"
+              >
+                <DownloadIcon className="w-3 h-3" />
+                {jobStatus.filename}
+              </button>
             </div>
           )}
 
           {jobStatus.phase === 'error' && (
-            <span className="text-[11px] text-red-800">
-              ✗ {jobStatus.message}
-            </span>
-          )}
-
-          {jobStatus.phase === 'idle' && (
-            <span className="label-caps text-ink-300">렌더 준비 완료</span>
+            <span className="text-[11px] text-red-800">✗ {jobStatus.message}</span>
           )}
         </div>
       </div>
@@ -290,25 +252,8 @@ export default function ExportPanel() {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function DownloadLink({ href, label }: { href: string; label: string }) {
-  return (
-    <a
-      href={href}
-      download
-      className="flex items-center gap-1 px-2.5 py-1 rounded-none border border-ink-500 text-[11px] text-ink-700 hover:bg-cream-300 transition-colors"
-    >
-      <DownloadIcon className="w-3 h-3" />
-      {label}
-    </a>
-  );
-}
-
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="label-caps whitespace-nowrap">
-      {children}
-    </span>
-  );
+  return <span className="label-caps whitespace-nowrap">{children}</span>;
 }
 
 function PlayIcon({ className }: { className?: string }) {
@@ -319,10 +264,10 @@ function PlayIcon({ className }: { className?: string }) {
   );
 }
 
-function SpinnerIcon({ className }: { className?: string }) {
+function StopIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <rect x="5" y="5" width="14" height="14" rx="1" />
     </svg>
   );
 }
