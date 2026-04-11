@@ -32,10 +32,10 @@ function FormatBtn({
     <button
       onClick={onClick}
       className={`
-        px-3 py-1.5 rounded border text-xs font-medium tracking-wide transition-colors
+        px-3 py-1.5 rounded-none border text-xs font-medium tracking-wide transition-colors
         ${active
-          ? 'bg-amber-400 border-amber-400 text-black'
-          : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+          ? 'bg-ink-900 border-ink-900 text-cream-100'
+          : 'border-cream-300 text-ink-500 hover:text-ink-900 hover:border-ink-500'
         }
       `}
     >
@@ -61,9 +61,9 @@ const TITLE_MODES = [
 
 function ProgressBar({ progress }: { progress: number }) {
   return (
-    <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+    <div className="w-full bg-cream-300 h-1 overflow-hidden">
       <div
-        className="h-full bg-amber-400 rounded-full transition-all duration-300"
+        className="h-full bg-ink-900 transition-all duration-300"
         style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
       />
     </div>
@@ -90,7 +90,6 @@ export default function ExportPanel() {
         const res = await fetch(`/api/export/status/${jobId}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        // Expected: { status: 'processing'|'done'|'error', progress: 0-100, message: string, urls?: {...} }
         if (data.status === 'done') {
           clearInterval(pollRef.current!);
           setJobStatus({ phase: 'done', urls: data.urls ?? {} });
@@ -157,7 +156,7 @@ export default function ExportPanel() {
   const isRendering = jobStatus.phase === 'rendering';
 
   return (
-    <div className="flex items-center gap-6 px-5 py-3 border-t border-zinc-800 bg-zinc-950 flex-wrap">
+    <div className="flex items-center gap-6 px-5 py-3 border-t border-cream-300 bg-cream-200 flex-wrap">
 
       {/* Format selector */}
       <div className="flex items-center gap-2">
@@ -183,7 +182,7 @@ export default function ExportPanel() {
       </div>
 
       {/* Divider */}
-      <div className="w-px h-6 bg-zinc-800" />
+      <div className="w-px h-6 bg-cream-300" />
 
       {/* Title mode */}
       <div className="flex items-center gap-2">
@@ -194,10 +193,10 @@ export default function ExportPanel() {
               key={m.value}
               onClick={() => setTitleMode(m.value)}
               className={`
-                px-2.5 py-1 rounded border text-[11px] tracking-wide transition-colors
+                px-2.5 py-1 rounded-none border text-[11px] tracking-wide transition-colors
                 ${titleMode === m.value
-                  ? 'bg-zinc-700 border-zinc-500 text-zinc-100'
-                  : 'border-zinc-800 text-zinc-600 hover:border-zinc-700 hover:text-zinc-400'
+                  ? 'bg-ink-900 border-ink-900 text-cream-100'
+                  : 'border-cream-300 text-ink-500 hover:border-ink-500 hover:text-ink-900'
                 }
               `}
             >
@@ -208,7 +207,7 @@ export default function ExportPanel() {
       </div>
 
       {/* Divider */}
-      <div className="w-px h-6 bg-zinc-800" />
+      <div className="w-px h-6 bg-cream-300" />
 
       {/* Render button + status */}
       <div className="flex items-center gap-3 flex-1 min-w-[260px]">
@@ -216,7 +215,7 @@ export default function ExportPanel() {
         {jobStatus.phase === 'done' || jobStatus.phase === 'error' ? (
           <button
             onClick={handleReset}
-            className="px-4 py-2 rounded border border-zinc-700 text-xs text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors whitespace-nowrap"
+            className="px-4 py-2 rounded-none border border-cream-300 text-xs text-ink-500 hover:text-ink-900 hover:border-ink-500 transition-colors whitespace-nowrap"
           >
             다시 렌더
           </button>
@@ -225,10 +224,10 @@ export default function ExportPanel() {
             onClick={handleRender}
             disabled={isRendering}
             className={`
-              flex items-center gap-2 px-4 py-2 rounded text-xs font-semibold tracking-wider transition-colors whitespace-nowrap
+              flex items-center gap-2 px-6 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest transition-colors whitespace-nowrap
               ${isRendering
-                ? 'bg-zinc-800 border border-zinc-700 text-zinc-600 cursor-not-allowed'
-                : 'bg-amber-400 text-black hover:bg-amber-300'
+                ? 'bg-cream-300 border border-cream-300 text-ink-300 cursor-not-allowed'
+                : 'bg-ink-900 text-cream-100 hover:bg-ink-700'
               }
             `}
           >
@@ -251,8 +250,8 @@ export default function ExportPanel() {
           {jobStatus.phase === 'rendering' && (
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-zinc-400">{jobStatus.message}</span>
-                <span className="text-[11px] text-amber-400 font-mono tabular-nums">
+                <span className="text-[11px] text-ink-500">{jobStatus.message}</span>
+                <span className="font-mono text-[11px] text-ink-900 tabular-nums">
                   {jobStatus.progress}%
                 </span>
               </div>
@@ -262,7 +261,7 @@ export default function ExportPanel() {
 
           {jobStatus.phase === 'done' && (
             <div className="flex items-center gap-3">
-              <span className="text-[11px] text-emerald-400">✓ 렌더 완료</span>
+              <span className="text-[11px] text-ink-700">✓ 렌더 완료</span>
               {jobStatus.urls['16:9'] && (
                 <DownloadLink href={jobStatus.urls['16:9']} label="16:9 다운로드" />
               )}
@@ -273,13 +272,13 @@ export default function ExportPanel() {
           )}
 
           {jobStatus.phase === 'error' && (
-            <span className="text-[11px] text-red-400">
+            <span className="text-[11px] text-red-800">
               ✗ {jobStatus.message}
             </span>
           )}
 
           {jobStatus.phase === 'idle' && (
-            <span className="text-[11px] text-zinc-700">렌더 준비 완료</span>
+            <span className="label-caps text-ink-300">렌더 준비 완료</span>
           )}
         </div>
       </div>
@@ -296,7 +295,7 @@ function DownloadLink({ href, label }: { href: string; label: string }) {
     <a
       href={href}
       download
-      className="flex items-center gap-1 px-2.5 py-1 rounded border border-emerald-700/50 text-[11px] text-emerald-400 hover:bg-emerald-900/20 transition-colors"
+      className="flex items-center gap-1 px-2.5 py-1 rounded-none border border-ink-500 text-[11px] text-ink-700 hover:bg-cream-300 transition-colors"
     >
       <DownloadIcon className="w-3 h-3" />
       {label}
@@ -306,7 +305,7 @@ function DownloadLink({ href, label }: { href: string; label: string }) {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] font-semibold tracking-widest text-zinc-600 uppercase whitespace-nowrap">
+    <span className="label-caps whitespace-nowrap">
       {children}
     </span>
   );

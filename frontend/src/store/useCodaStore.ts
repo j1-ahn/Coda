@@ -38,6 +38,8 @@ export interface Scene {
   effects: {
     parallaxEnabled: boolean;
     maskingEnabled: boolean;
+    loopMode: 'none' | 'wind' | 'ripple';
+    loopStrength: number;             // 0~1
   };
 }
 
@@ -94,6 +96,15 @@ export interface CodaStore {
   titleMode: 'hero-to-corner' | 'ambient-object' | 'breathing';
   titleText: string;
 
+  // EQ
+  eqPresetId: string;
+  eqReactMode: 'pulse' | 'ripple' | 'chromatic' | 'warp';
+  eqCustomImageUrl: string | null;
+
+  setEQPreset: (id: string) => void;
+  setEQReactMode: (mode: 'pulse' | 'ripple' | 'chromatic' | 'warp') => void;
+  setEQCustomImage: (url: string | null) => void;
+
   // ---------------------------------------------------------------------------
   // Actions
   // ---------------------------------------------------------------------------
@@ -142,6 +153,10 @@ export interface CodaStore {
   setTitleMode: (mode: CodaStore['titleMode']) => void;
   setTitleText: (text: string) => void;
 
+  // Loop animation
+  setLoopMode: (sceneId: string, mode: 'none' | 'wind' | 'ripple') => void;
+  setLoopStrength: (sceneId: string, strength: number) => void;
+
   // Export
   setExportFormat: (format: CodaStore['exportFormat']) => void;
 }
@@ -156,7 +171,7 @@ const makeDefaultScene = (order: number): Scene => ({
   background: { type: 'image', url: null, fileName: null },
   durationSec: 0,
   textTracks: [],
-  effects: { parallaxEnabled: false, maskingEnabled: false },
+  effects: { parallaxEnabled: false, maskingEnabled: false, loopMode: 'none', loopStrength: 0.5 },
 });
 
 const defaultVFX: VFXParams = {
@@ -189,6 +204,10 @@ export const useCodaStore = create<CodaStore>()(
 
     titleMode: 'hero-to-corner',
     titleText: 'Coda Studio',
+
+    eqPresetId: 'eclipse',
+    eqReactMode: 'pulse',
+    eqCustomImageUrl: null,
 
     // ---- Scene actions ----
 
@@ -416,9 +435,34 @@ export const useCodaStore = create<CodaStore>()(
         if (idx !== -1) track.whisperSegments.splice(idx, 1);
       }),
 
+    // ---- Loop animation actions ----
+
+    setLoopMode: (sceneId, mode) =>
+      set((state) => {
+        const scene = state.scenes.find((s) => s.id === sceneId);
+        if (scene) scene.effects.loopMode = mode;
+      }),
+
+    setLoopStrength: (sceneId, strength) =>
+      set((state) => {
+        const scene = state.scenes.find((s) => s.id === sceneId);
+        if (scene) scene.effects.loopStrength = strength;
+      }),
+
     // ---- Export actions ----
 
     setExportFormat: (format) =>
       set((state) => { state.exportFormat = format; }),
+
+    // ---- EQ actions ----
+
+    setEQPreset: (id) =>
+      set((state) => { state.eqPresetId = id; }),
+
+    setEQReactMode: (mode) =>
+      set((state) => { state.eqReactMode = mode; }),
+
+    setEQCustomImage: (url) =>
+      set((state) => { state.eqCustomImageUrl = url; }),
   }))
 );

@@ -30,33 +30,33 @@ function ProcessingBadge({ status }: { status: AudioTrack['processing'] }) {
   switch (status) {
     case 'idle':
       return (
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-400 font-medium">
+        <span className="text-[10px] px-2 py-0.5 bg-cream-300 text-ink-500 font-medium">
           대기
         </span>
       );
     case 'uploading':
       return (
-        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-900/60 text-blue-300 font-medium">
+        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-ink-900 text-cream-100 font-medium">
           <SpinnerIcon />
           업로드 중...
         </span>
       );
     case 'transcribing':
       return (
-        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-900/60 text-amber-300 font-medium">
+        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-ink-900 text-cream-100 font-medium">
           <SpinnerIcon />
           분석 중...
         </span>
       );
     case 'done':
       return (
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-400 font-medium">
+        <span className="text-[10px] px-2 py-0.5 bg-ink-700 text-cream-100 font-medium">
           완료
         </span>
       );
     case 'error':
       return (
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-900/60 text-red-400 font-medium">
+        <span className="text-[10px] px-2 py-0.5 border border-red-800 text-red-800 font-medium">
           오류
         </span>
       );
@@ -142,10 +142,7 @@ export default function UploadPanel() {
         const url = URL.createObjectURL(file);
         const id = addAudioTrack(file.name, url);
         const dur = await loadAudioDuration(url);
-        // patch duration directly via setWhisperSegments with existing segments
-        // We use setAudioTrackProcessing to keep idle, then patch duration separately
         useCodaStore.getState().setWhisperSegments(id, [], dur);
-        // reset processing back to idle (setWhisperSegments sets it to 'done')
         useCodaStore.getState().setAudioTrackProcessing(id, 'idle');
       }
     },
@@ -181,7 +178,6 @@ export default function UploadPanel() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-      // Expected: { segments: [{id, start, end, text}], duration: number }
       setWhisperSegments(track.id, data.segments ?? [], data.duration ?? track.durationSec);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '알 수 없는 오류';
@@ -205,13 +201,12 @@ export default function UploadPanel() {
           onClick={() => bgInputRef.current?.click()}
           className={`
             relative flex flex-col items-center justify-center
-            rounded border-2 border-dashed cursor-pointer
-            transition-all duration-200 select-none
+            border border-dashed cursor-pointer
+            transition-all duration-200 select-none h-[90px]
             ${bgDragOver
-              ? 'border-amber-400 bg-amber-400/5 shadow-[0_0_12px_rgba(251,191,36,0.15)]'
-              : 'border-zinc-700 bg-zinc-900 hover:border-zinc-500 hover:bg-zinc-800/60'
+              ? 'border-ink-500 bg-cream-200'
+              : 'border-cream-300 bg-cream-50 hover:bg-cream-200'
             }
-            ${bgPreview ? 'h-[90px]' : 'h-[90px]'}
           `}
         >
           {bgPreview ? (
@@ -220,22 +215,20 @@ export default function UploadPanel() {
               <img
                 src={bgPreview}
                 alt="bg preview"
-                className="absolute inset-0 w-full h-full object-cover rounded opacity-70"
+                className="absolute inset-0 w-full h-full object-cover opacity-70"
               />
               <div className="relative z-10 flex flex-col items-center gap-1">
-                <span className="text-[10px] bg-black/60 px-2 py-0.5 rounded text-zinc-300">
+                <span className="text-[10px] bg-cream-100/80 px-2 py-0.5 text-ink-700">
                   {activeScene?.background.fileName ?? '이미지'}
                 </span>
-                <span className="text-[9px] text-zinc-500">클릭하여 교체</span>
+                <span className="text-[9px] text-ink-500">클릭하여 교체</span>
               </div>
             </>
           ) : (
             <div className="flex flex-col items-center gap-1.5 pointer-events-none">
-              <UploadIcon className="w-5 h-5 text-zinc-600" />
-              <span className="text-[11px] text-zinc-500">
-                드래그 앤 드롭 또는 클릭
-              </span>
-              <span className="text-[10px] text-zinc-700">PNG · JPG · WEBP · MP4</span>
+              <UploadIcon className="w-5 h-5 text-ink-300" />
+              <span className="label-caps text-ink-500">드래그 앤 드롭 또는 클릭</span>
+              <span className="text-[10px] text-ink-300">PNG · JPG · WEBP · MP4</span>
             </div>
           )}
         </div>
@@ -250,13 +243,13 @@ export default function UploadPanel() {
       </div>
 
       {/* ── Divider ──────────────────────────────────────────────────────── */}
-      <div className="border-t border-zinc-800" />
+      <div className="border-t border-cream-300" />
 
       {/* ── Section: Audio Tracks ────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col gap-2 min-h-0">
         <div className="flex items-center justify-between">
           <SectionLabel>오디오 트랙</SectionLabel>
-          <span className="text-[10px] text-zinc-600">
+          <span className="text-[10px] text-ink-300">
             {audioTracks.length}/10
           </span>
         </div>
@@ -267,10 +260,10 @@ export default function UploadPanel() {
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleAudioDrop}
             onClick={() => audioInputRef.current?.click()}
-            className="flex items-center justify-center gap-2 h-8 rounded border border-dashed border-zinc-700 bg-zinc-900 hover:border-zinc-500 cursor-pointer transition-colors"
+            className="flex items-center justify-center gap-2 h-8 border border-dashed border-cream-300 bg-cream-50 hover:bg-cream-200 cursor-pointer transition-colors"
           >
-            <UploadIcon className="w-3.5 h-3.5 text-zinc-600" />
-            <span className="text-[11px] text-zinc-500">오디오 추가 (MP3 · WAV · M4A)</span>
+            <UploadIcon className="w-3.5 h-3.5 text-ink-300" />
+            <span className="label-caps text-ink-500">오디오 추가 (MP3 · WAV · M4A)</span>
           </div>
         )}
 
@@ -286,7 +279,7 @@ export default function UploadPanel() {
         {/* Track list */}
         <div className="flex flex-col gap-1.5 overflow-y-auto">
           {audioTracks.length === 0 && (
-            <p className="text-center text-[11px] text-zinc-700 py-3">
+            <p className="text-center label-caps text-ink-300 py-3">
               오디오 트랙이 없습니다
             </p>
           )}
@@ -325,26 +318,26 @@ function AudioTrackCard({ track, isActive, onSelect, onRemove, onTranscribe }: A
     <div
       onClick={onSelect}
       className={`
-        flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors
+        flex items-center gap-2 p-2 border cursor-pointer transition-colors
         ${isActive
-          ? 'border-amber-400/50 bg-amber-400/5'
-          : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+          ? 'border-ink-500 bg-cream-200'
+          : 'border-cream-300 bg-cream-50 hover:border-ink-300'
         }
       `}
     >
       {/* Audio icon */}
-      <div className="shrink-0 w-6 h-6 rounded bg-zinc-800 flex items-center justify-center">
-        <AudioIcon className="w-3 h-3 text-zinc-500" />
+      <div className="shrink-0 w-6 h-6 bg-cream-300 flex items-center justify-center">
+        <AudioIcon className="w-3 h-3 text-ink-500" />
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] text-zinc-300 truncate leading-tight">{track.fileName}</p>
+        <p className="text-[11px] text-ink-900 truncate leading-tight">{track.fileName}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[10px] text-zinc-600">{formatDuration(track.durationSec)}</span>
+          <span className="text-[10px] text-ink-300">{formatDuration(track.durationSec)}</span>
           <ProcessingBadge status={track.processing} />
           {track.error && (
-            <span className="text-[10px] text-red-400 truncate max-w-[80px]" title={track.error}>
+            <span className="text-[10px] text-red-800 truncate max-w-[80px]" title={track.error}>
               {track.error}
             </span>
           )}
@@ -357,10 +350,10 @@ function AudioTrackCard({ track, isActive, onSelect, onRemove, onTranscribe }: A
           onClick={onTranscribe}
           disabled={!canTranscribe}
           className={`
-            text-[10px] px-2 py-1 rounded border transition-colors
+            bg-ink-900 text-cream-100 rounded-none px-3 py-1 text-[10px] uppercase tracking-wider transition-colors
             ${canTranscribe
-              ? 'border-zinc-700 text-zinc-400 hover:border-amber-400/50 hover:text-amber-400'
-              : 'border-zinc-800 text-zinc-700 cursor-not-allowed'
+              ? 'opacity-100 hover:bg-ink-700'
+              : 'opacity-30 cursor-not-allowed'
             }
           `}
         >
@@ -368,7 +361,7 @@ function AudioTrackCard({ track, isActive, onSelect, onRemove, onTranscribe }: A
         </button>
         <button
           onClick={onRemove}
-          className="w-5 h-5 flex items-center justify-center rounded text-zinc-600 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+          className="w-5 h-5 flex items-center justify-center text-ink-300 hover:text-ink-900 transition-colors"
         >
           ×
         </button>
@@ -383,7 +376,7 @@ function AudioTrackCard({ track, isActive, onSelect, onRemove, onTranscribe }: A
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-semibold tracking-widest text-zinc-500 uppercase mb-2">
+    <p className="label-caps mb-2">
       {children}
     </p>
   );

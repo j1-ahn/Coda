@@ -103,9 +103,9 @@ export default function SubtitleEditor() {
 
   if (!activeTrack) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-2 p-4">
-        <SubtitleIcon className="w-8 h-8 text-zinc-700" />
-        <p className="text-[11px] text-zinc-600 text-center">
+      <div className="flex flex-col items-center justify-center h-full gap-2 p-4 bg-cream-100">
+        <SubtitleIcon className="w-8 h-8 text-ink-300" />
+        <p className="label-caps text-ink-300 text-center">
           오디오 트랙을 선택하면<br />자막 세그먼트가 표시됩니다
         </p>
       </div>
@@ -114,19 +114,19 @@ export default function SubtitleEditor() {
 
   if (segments.length === 0) {
     return (
-      <div className="flex flex-col h-full p-3 gap-3">
+      <div className="flex flex-col h-full p-3 gap-3 bg-cream-100">
         <div className="flex items-center justify-between">
           <SectionLabel>{activeTrack.fileName}</SectionLabel>
-          <span className="text-[10px] text-zinc-600">세그먼트 없음</span>
+          <span className="label-caps text-ink-300">세그먼트 없음</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-2">
           {activeTrack.processing === 'idle' && (
-            <p className="text-[11px] text-zinc-600 text-center">
+            <p className="label-caps text-ink-300 text-center">
               업로드 패널에서 "자막 분석"을 눌러주세요
             </p>
           )}
           {activeTrack.processing === 'transcribing' && (
-            <p className="text-[11px] text-amber-400/70 text-center animate-pulse">
+            <p className="label-caps text-ink-500 text-center animate-pulse">
               Whisper 분석 중...
             </p>
           )}
@@ -139,18 +139,18 @@ export default function SubtitleEditor() {
   // ── Main render ──────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-full p-3 gap-2 min-h-0">
+    <div className="flex flex-col h-full p-3 gap-2 min-h-0 bg-cream-100">
       {/* Header */}
       <div className="flex items-center justify-between shrink-0">
         <SectionLabel>{activeTrack.fileName}</SectionLabel>
-        <span className="text-[10px] text-zinc-600">{segments.length} 세그먼트</span>
+        <span className="label-caps text-ink-300">{segments.length} 세그먼트</span>
       </div>
 
       {/* Column headers */}
       <div className="grid grid-cols-[80px_80px_1fr_24px] gap-1.5 px-1 shrink-0">
-        <span className="text-[9px] text-zinc-700 uppercase tracking-wider">시작</span>
-        <span className="text-[9px] text-zinc-700 uppercase tracking-wider">끝</span>
-        <span className="text-[9px] text-zinc-700 uppercase tracking-wider">텍스트</span>
+        <span className="label-caps text-ink-300">시작</span>
+        <span className="label-caps text-ink-300">끝</span>
+        <span className="label-caps text-ink-300">텍스트</span>
         <span />
       </div>
 
@@ -195,8 +195,8 @@ function SegmentRow({ seg, isActive, onTextChange, onStartChange, onEndChange, o
   return (
     <div
       className={`
-        grid grid-cols-[80px_80px_1fr_24px] gap-1.5 items-center px-1 py-1 rounded transition-colors
-        ${isActive ? 'bg-amber-400/20 border border-amber-400/30' : 'border border-transparent hover:bg-zinc-800/40'}
+        grid grid-cols-[80px_80px_1fr_24px] gap-1.5 items-center px-1 py-1 transition-colors
+        ${isActive ? 'bg-ink-900/10 border border-ink-900/20' : 'border border-transparent hover:bg-cream-200'}
       `}
     >
       {/* Start time */}
@@ -220,10 +220,10 @@ function SegmentRow({ seg, isActive, onTextChange, onStartChange, onEndChange, o
         onChange={(e) => onTextChange(e.target.value)}
         placeholder="텍스트 입력..."
         className={`
-          w-full bg-transparent border rounded px-1.5 py-0.5 text-[11px] outline-none transition-colors
+          w-full bg-transparent border-b px-1.5 py-0.5 text-[11px] outline-none transition-colors text-ink-900
           ${isActive
-            ? 'border-amber-400/40 text-amber-100 placeholder-amber-400/30 focus:border-amber-400'
-            : 'border-zinc-700 text-zinc-300 placeholder-zinc-700 focus:border-zinc-500'
+            ? 'border-ink-500 placeholder-ink-300 focus:border-ink-900'
+            : 'border-cream-300 placeholder-ink-300 focus:border-ink-500'
           }
         `}
       />
@@ -231,7 +231,7 @@ function SegmentRow({ seg, isActive, onTextChange, onStartChange, onEndChange, o
       {/* Remove */}
       <button
         onClick={onRemove}
-        className="w-5 h-5 flex items-center justify-center rounded text-zinc-700 hover:text-red-400 hover:bg-red-900/20 transition-colors text-base leading-none"
+        className="w-5 h-5 flex items-center justify-center text-ink-300 hover:text-ink-900 transition-colors text-base leading-none"
       >
         ×
       </button>
@@ -278,10 +278,10 @@ function TimeInput({
       onFocus={handleFocus}
       onBlur={handleBlur}
       className={`
-        w-full bg-transparent border rounded px-1.5 py-0.5 text-[10px] font-mono outline-none transition-colors
+        w-full bg-transparent border-b px-1.5 py-0.5 font-mono text-[11px] text-ink-500 outline-none transition-colors
         ${isActive
-          ? 'border-amber-400/40 text-amber-300 focus:border-amber-400'
-          : 'border-zinc-800 text-zinc-500 focus:border-zinc-600'
+          ? 'border-ink-500 focus:border-ink-900'
+          : 'border-cream-300 focus:border-ink-500'
         }
       `}
     />
@@ -294,17 +294,17 @@ function TimeInput({
 
 function BottomControls({ onAdd, onExport }: { onAdd: () => void; onExport: () => void }) {
   return (
-    <div className="flex items-center gap-2 shrink-0 pt-1 border-t border-zinc-800">
+    <div className="flex items-center gap-2 shrink-0 pt-1 border-t border-cream-300">
       <button
         onClick={onAdd}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-zinc-700 text-[11px] text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-none border border-cream-300 label-caps text-ink-500 hover:border-ink-500 hover:text-ink-900 transition-colors"
       >
         <span className="text-base leading-none">+</span>
         세그먼트 추가
       </button>
       <button
         onClick={onExport}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-zinc-700 text-[11px] text-zinc-400 hover:border-amber-400/50 hover:text-amber-400 transition-colors ml-auto"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-none border border-cream-300 label-caps text-ink-500 hover:border-ink-500 hover:text-ink-900 transition-colors ml-auto"
       >
         <ExportIcon className="w-3 h-3" />
         JSON 내보내기
@@ -319,7 +319,7 @@ function BottomControls({ onAdd, onExport }: { onAdd: () => void; onExport: () =
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-semibold tracking-widest text-zinc-500 uppercase truncate max-w-[160px]">
+    <p className="label-caps truncate max-w-[160px]">
       {children}
     </p>
   );

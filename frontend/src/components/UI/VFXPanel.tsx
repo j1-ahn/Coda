@@ -13,13 +13,13 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
       aria-checked={enabled}
       onClick={() => onChange(!enabled)}
       className={`
-        relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200
-        ${enabled ? 'bg-amber-400 border-amber-400' : 'bg-zinc-700 border-zinc-700'}
+        relative inline-flex h-4 w-7 shrink-0 cursor-pointer border-2 transition-colors duration-200
+        ${enabled ? 'bg-ink-900 border-ink-900' : 'bg-cream-300 border-cream-300'}
       `}
     >
       <span
         className={`
-          inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform duration-200
+          inline-block h-3 w-3 bg-white shadow transform transition-transform duration-200
           ${enabled ? 'translate-x-3' : 'translate-x-0'}
         `}
       />
@@ -43,7 +43,7 @@ function SliderRow({ label, value, onChange, disabled = false }: SliderRowProps)
 
   return (
     <div className={`flex items-center gap-2 transition-opacity ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
-      <span className="text-[10px] text-zinc-500 w-[64px] shrink-0">{label}</span>
+      <span className="text-[10px] text-[#6b6760] w-[64px] shrink-0">{label}</span>
       <input
         type="range"
         min={0}
@@ -51,20 +51,18 @@ function SliderRow({ label, value, onChange, disabled = false }: SliderRowProps)
         step={0.01}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="flex-1 h-1.5 appearance-none rounded-full bg-zinc-700 cursor-pointer
+        className="flex-1 h-1.5 appearance-none cursor-pointer
           [&::-webkit-slider-thumb]:appearance-none
           [&::-webkit-slider-thumb]:w-3
           [&::-webkit-slider-thumb]:h-3
-          [&::-webkit-slider-thumb]:rounded-full
-          [&::-webkit-slider-thumb]:bg-amber-400
+          [&::-webkit-slider-thumb]:bg-ink-900
           [&::-webkit-slider-thumb]:cursor-pointer
-          [&::-webkit-slider-thumb]:shadow-[0_0_4px_rgba(251,191,36,0.4)]
           focus:outline-none"
         style={{
-          background: `linear-gradient(to right, #fbbf24 0%, #fbbf24 ${pct}%, #3f3f46 ${pct}%, #3f3f46 100%)`,
+          background: `linear-gradient(to right, #1a1a16 0%, #1a1a16 ${pct}%, #d4cfc6 ${pct}%, #d4cfc6 100%)`,
         }}
       />
-      <span className="text-[10px] text-zinc-600 w-[24px] text-right tabular-nums">{value.toFixed(2)}</span>
+      <span className="font-mono text-[11px] text-ink-500 w-[28px] text-right tabular-nums">{value.toFixed(2)}</span>
     </div>
   );
 }
@@ -84,9 +82,7 @@ function GroupHeader({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] font-semibold tracking-widest text-zinc-300 uppercase flex-1">
-        {label}
-      </span>
+      <span className="label-caps text-ink-900 flex-1">{label}</span>
       <Toggle enabled={enabled} onChange={onToggle} />
     </div>
   );
@@ -133,7 +129,7 @@ export default function VFXPanel() {
         </div>
       </div>
 
-      <div className="border-t border-zinc-800" />
+      <div className="border-t border-cream-300" />
 
       {/* ── Film Grain ───────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-2">
@@ -152,7 +148,7 @@ export default function VFXPanel() {
         </div>
       </div>
 
-      <div className="border-t border-zinc-800" />
+      <div className="border-t border-cream-300" />
 
       {/* ── Vignette ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-2">
@@ -171,10 +167,10 @@ export default function VFXPanel() {
         </div>
       </div>
 
-      <div className="border-t border-zinc-800" />
+      <div className="border-t border-cream-300" />
 
       {/* ── Live preview hint ────────────────────────────────────────────── */}
-      <p className="text-[10px] text-zinc-700 text-center">
+      <p className="label-caps text-ink-300 text-center">
         변경사항은 캔버스에 실시간 반영됩니다
       </p>
     </div>

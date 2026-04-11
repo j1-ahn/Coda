@@ -35,6 +35,10 @@ import {
 import * as THREE from 'three';
 
 import { useCodaStore, Scene, ExternalAsset, VFXParams } from '@/store/useCodaStore';
+import TitleLayer from './TitleLayer';
+import LyricOverlay from './LyricOverlay';
+import { useParallax } from '@/hooks/useParallax';
+import { LoopShaderMesh } from './LoopShader';
 
 // ---------------------------------------------------------------------------
 // Pass 1: Background
@@ -45,33 +49,34 @@ interface BackgroundMeshProps {
 }
 
 function BackgroundMesh({ scene }: BackgroundMeshProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
 
   const texture = useTexture(scene.background.url ?? '');
 
-  // Parallax: 마우스 이동에 따라 배경 미세 이동
-  useFrame(({ mouse }) => {
+  // useParallax 훅으로 마우스 기반 오프셋 계산
+  const parallaxPos = useParallax(0.08);
+
+  // Parallax: 매 프레임 오프셋 적용
+  useFrame(() => {
     if (!meshRef.current || !scene.effects.parallaxEnabled) return;
-    meshRef.current.position.x = THREE.MathUtils.lerp(
-      meshRef.current.position.x,
-      mouse.x * 0.08,
-      0.05
-    );
-    meshRef.current.position.y = THREE.MathUtils.lerp(
-      meshRef.current.position.y,
-      mouse.y * 0.05,
-      0.05
-    );
+    meshRef.current.position.x = parallaxPos.current.x;
+    meshRef.current.position.y = parallaxPos.current.y;
   });
 
   if (!scene.background.url) return null;
 
+  const { loopMode, loopStrength } = scene.effects;
+
   return (
-    <mesh ref={meshRef} scale={[viewport.width, viewport.height, 1]}>
-      <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial map={texture} toneMapped={false} />
-    </mesh>
+    <group ref={meshRef}>
+      <LoopShaderMesh
+        texture={texture}
+        mode={loopMode}
+        strength={loopStrength}
+        scale={[viewport.width, viewport.height, 1]}
+      />
+    </group>
   );
 }
 
@@ -220,6 +225,12 @@ function SceneContent() {
       {/* Pass 3: Bypass — no postprocessing */}
       <Suspense fallback={null}>
         <BypassLayer assets={bypassAssets} />
+      </Suspense>
+
+      {/* Pass 4: Title + Lyric overlay — above all passes */}
+      <Suspense fallback={null}>
+        <TitleLayer />
+        <LyricOverlay />
       </Suspense>
     </>
   );
