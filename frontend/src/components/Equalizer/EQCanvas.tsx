@@ -79,8 +79,8 @@ const drawEclipse: DrawFn = (ctx, w, h, data, time, _s, preset) => {
 
   // Corona glow layers (outermost first)
   for (let i = 5; i >= 0; i--) {
-    const r = baseR * (1.5 + i * 0.45 + bass * 1.4);
-    const a = (0.07 - i * 0.01) * (0.4 + bass * 0.9);
+    const r = baseR * (1.5 + i * 0.45 + bass * 2.4);
+    const a = (0.07 - i * 0.01) * (0.4 + bass * 1.6);
     const g = ctx.createRadialGradient(cx, cy, baseR * 0.85, cx, cy, r);
     g.addColorStop(0,   `rgba(${tr},${tg},${tb},${a * 3})`);
     g.addColorStop(0.4, `rgba(${tr},${tg},${tb},${a})`);
@@ -94,8 +94,8 @@ const drawEclipse: DrawFn = (ctx, w, h, data, time, _s, preset) => {
   for (let i = 0; i < 12; i++) {
     const angle = (i / 12) * Math.PI * 2 + time * 0.08;
     const bin = Math.floor((i / 12) * frequencyData.length * 0.35);
-    const str = (frequencyData[bin] / 255) * (0.4 + bass * 0.6);
-    const len = baseR * (0.2 + str * 2.2);
+    const str = (frequencyData[bin] / 255) * (0.5 + bass * 1.1);
+    const len = baseR * (0.2 + str * 3.2);
     ctx.strokeStyle = `rgba(${tr},${tg},${tb},${str * 0.85})`;
     ctx.lineWidth = 0.8 + str * 2.2;
     ctx.beginPath();
@@ -144,7 +144,7 @@ const drawWaveform: DrawFn = (ctx, w, h, data, time) => {
 
   const { frequencyData, overallLevel, bassLevel } = data;
   const cy = h * 0.5;
-  const amp = h * 0.36 * (0.45 + overallLevel * 1.3);
+  const amp = h * 0.36 * (0.3 + overallLevel * 2.2);
 
   // Multi-pass glow
   for (let pass = 0; pass < 3; pass++) {
@@ -185,7 +185,7 @@ const drawWaveform: DrawFn = (ctx, w, h, data, time) => {
 // a:b는 고정 비율(3:2)을 기반으로 exponential smoothing으로 매우 서서히 변화.
 // 위상 delta는 연속적으로 누적되어 도형이 부드럽게 회전/변형됨.
 // ---------------------------------------------------------------------------
-const drawLissajous: DrawFn = (ctx, w, h, data, _time, state) => {
+const drawLissajous: DrawFn = (ctx, w, h, data, time, state) => {
   if (!state.traceHistory)  state.traceHistory  = [];
   if (state.lissA      === undefined) state.lissA      = 3.0;
   if (state.lissB      === undefined) state.lissB      = 2.0;
@@ -195,8 +195,8 @@ const drawLissajous: DrawFn = (ctx, w, h, data, _time, state) => {
   ctx.fillRect(0, 0, w, h);
 
   const cx = w / 2, cy = h / 2;
-  // Radius pulses gently with overall level, never jumps
-  const r = Math.min(w, h) * (0.34 + data.overallLevel * 0.06);
+  // Radius pulses with overall level, never jumps
+  const r = Math.min(w, h) * (0.28 + data.overallLevel * 0.14);
 
   // Outer frame rings
   ctx.strokeStyle = 'rgba(29,111,255,0.13)';
@@ -214,9 +214,9 @@ const drawLissajous: DrawFn = (ctx, w, h, data, _time, state) => {
   state.lissB! += (targetB - state.lissB!) * α;
 
   // ── Phase accumulates continuously — audio energy speeds it up ──
-  // At silence: ~0.008 rad/frame → full cycle ≈ 13 s
-  // At full signal: ~0.025 rad/frame → full cycle ≈ 4 s
-  state.lissPhase! += 0.008 + data.overallLevel * 0.017;
+  // At silence: ~0.006 rad/frame → full cycle ≈ 17 s
+  // At full signal: ~0.055 rad/frame → full cycle ≈ 2 s
+  state.lissPhase! += 0.006 + data.overallLevel * 0.049;
 
   const a     = state.lissA!;
   const b     = state.lissB!;
@@ -251,14 +251,17 @@ const drawLissajous: DrawFn = (ctx, w, h, data, _time, state) => {
   });
   ctx.shadowBlur = 0;
 
-  // Coordinate readout
+  // Timer + level readout (top-right)
   const fs = Math.max(9, w * 0.022);
+  const mm  = String(Math.floor(time / 60)).padStart(2, '0');
+  const ss  = String(Math.floor(time % 60)).padStart(2, '0');
+  const cs  = String(Math.floor((time % 1) * 100)).padStart(2, '0');
   ctx.font = `${fs}px monospace`;
   ctx.fillStyle = 'rgba(100,160,255,0.42)';
   ctx.textAlign = 'right';
-  ctx.fillText(`SEC: -45° 32' 52.3"`,                                    w * 0.96, h * 0.09);
-  ctx.fillText(`DEC: 520 43' ${(52 + data.overallLevel * 5).toFixed(1)}"`, w * 0.96, h * 0.15);
-  ctx.fillText(`MAG: ${(10 + data.overallLevel * 5).toFixed(1)}`,         w * 0.96, h * 0.21);
+  ctx.fillText(`${mm}:${ss}:${cs}`,                                       w * 0.96, h * 0.09);
+  ctx.fillText(`BAS ${(data.bassLevel * 100).toFixed(0).padStart(3,' ')}`, w * 0.96, h * 0.15);
+  ctx.fillText(`MID ${(data.midLevel  * 100).toFixed(0).padStart(3,' ')}`, w * 0.96, h * 0.21);
 };
 
 // ---------------------------------------------------------------------------
@@ -278,10 +281,10 @@ const drawSparks: DrawFn = (ctx, w, h, data, _time, state) => {
 
   // Beat detection
   state.beatCooldown = Math.max(0, state.beatCooldown - 1);
-  const isBeat = bass > (state.prevBass ?? 0) + 0.12 && bass > 0.25 && state.beatCooldown === 0;
+  const isBeat = bass > (state.prevBass ?? 0) + 0.08 && bass > 0.15 && state.beatCooldown === 0;
 
   if (isBeat) {
-    const count = Math.floor(18 + bass * 55);
+    const count = Math.floor(25 + bass * 90);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 1.2 + Math.random() * (2.5 + bass * 5);
@@ -353,8 +356,8 @@ const drawMagenta: DrawFn = (ctx, w, h, data, time, _s, preset) => {
   for (const b of blobs) {
     const bx = (b.ox + Math.sin(time * b.fr + b.ph) * 0.09) * w;
     const by = (b.oy + Math.cos(time * b.fr * 0.7 + b.ph) * 0.09) * h;
-    const r  = Math.min(w, h) * (0.14 + b.lvl * 0.22);
-    const a  = 0.45 + b.lvl * 0.55;
+    const r  = Math.min(w, h) * (0.10 + b.lvl * 0.38);
+    const a  = 0.35 + b.lvl * 0.65;
     const g  = ctx.createRadialGradient(bx, by, 0, bx, by, r);
     g.addColorStop(0,   `rgba(${tr},${tg},${tb},${a})`);
     g.addColorStop(0.45,`rgba(${tr},${tg},${tb},${a * 0.55})`);
@@ -453,7 +456,7 @@ const drawRadial: DrawFn = (ctx, w, h, data) => {
     const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
     const bin   = Math.floor((i / barCount) * frequencyData.length);
     const val   = frequencyData[bin] / 255;
-    const len   = val * maxLen * (0.5 + bassLevel * 0.75);
+    const len   = val * maxLen * (0.4 + bassLevel * 1.4);
     const alpha = 0.35 + val * 0.65;
     ctx.strokeStyle = `rgba(235,235,235,${alpha})`;
     ctx.lineWidth   = (Math.PI * 2 * inner / barCount) * 0.65;
@@ -497,7 +500,7 @@ const drawTerrain: DrawFn = (ctx, w, h, data, _time, state) => {
 
   const getHeight = (col: number, row: number) => {
     const bin  = Math.floor((col / cols) * frequencyData.length * 0.75);
-    const aH   = (frequencyData[bin] / 255) * overallLevel * h * 0.22;
+    const aH   = (frequencyData[bin] / 255) * overallLevel * h * 0.42;
     const wave = Math.sin(col * 0.38 + state.phase! + row * 0.28) * h * 0.055;
     return aH + wave;
   };
@@ -567,8 +570,8 @@ const drawOrbit: DrawFn = (ctx, w, h, data, time, _s, preset) => {
 
   // Atmosphere glow
   for (let i = 4; i >= 0; i--) {
-    const r = pR * (1.35 + i * 0.5 + bass * 0.85);
-    const a = (0.055 - i * 0.009) * (0.45 + bass * 0.7);
+    const r = pR * (1.35 + i * 0.5 + bass * 1.8);
+    const a = (0.055 - i * 0.009) * (0.4 + bass * 1.4);
     const g = ctx.createRadialGradient(cx, cy, pR, cx, cy, r);
     g.addColorStop(0,   `rgba(${tr},${tg},${tb},${a * 3.5})`);
     g.addColorStop(0.5, `rgba(${tr},${tg},${tb},${a})`);
@@ -734,7 +737,7 @@ const drawBloom: DrawFn = (ctx, w, h, data, time, _s, preset) => {
     const [cr, cg, cb] = palette[fi % palette.length];
     const petals  = 5 + (fi % 3);
     const petalR  = Math.min(w, h) * (0.038 + fi * 0.004 + bass * 0.028);
-    const open    = 0.68 + overall * 0.32 + Math.sin(time * 0.75 + fi) * 0.1;
+    const open    = 0.5 + overall * 0.7 + bass * 0.25 + Math.sin(time * 0.75 + fi) * 0.12;
 
     ctx.save();
     ctx.translate(fp.x, fp.y);
@@ -772,9 +775,9 @@ const drawHorizon: DrawFn = (ctx, w, h, data, time) => {
 
   const { frequencyData, overallLevel } = data;
   const layers = [
-    { yBase: 0.63, amp: 0.14, spd: 0.28, col: 'rgba(28,44,58,0.68)', fs: 0.28 },
-    { yBase: 0.70, amp: 0.11, spd: 0.48, col: 'rgba(38,28,22,0.80)', fs: 0.58 },
-    { yBase: 0.77, amp: 0.09, spd: 0.80, col: 'rgba(18,14,10,0.92)', fs: 0.98 },
+    { yBase: 0.63, amp: 0.22, spd: 0.28, col: 'rgba(28,44,58,0.68)', fs: 0.28 },
+    { yBase: 0.70, amp: 0.18, spd: 0.48, col: 'rgba(38,28,22,0.80)', fs: 0.58 },
+    { yBase: 0.77, amp: 0.14, spd: 0.80, col: 'rgba(18,14,10,0.92)', fs: 0.98 },
   ];
 
   for (const layer of layers) {
