@@ -98,12 +98,32 @@ export interface CodaStore {
 
   // EQ
   eqPresetId: string;
-  eqReactMode: 'pulse' | 'ripple' | 'chromatic' | 'warp';
+  eqReactMode: 'original' | 'pulse' | 'ripple' | 'chromatic' | 'warp';
   eqCustomImageUrl: string | null;
+  eqOverlayVisible: boolean;
+  eqIntensity: number; // 0–1 canvas globalAlpha multiplier
+  eqSensitivity: number; // 0.1–3.0 audio level multiplier (default 1.0)
+  eqOverlayX: number;   // default 40
+  eqOverlayY: number;   // default 40
+  eqOverlayW: number;   // default 320
+  eqOverlayH: number;   // default 180
+  eqFlipX: boolean;
+  eqFlipY: boolean;
+  eqTintColor: string | null; // null = use preset default
+  eqOpacity: number;  // 0–1, default 1
+  eqMirror: boolean;
 
   setEQPreset: (id: string) => void;
-  setEQReactMode: (mode: 'pulse' | 'ripple' | 'chromatic' | 'warp') => void;
+  setEQReactMode: (mode: 'original' | 'pulse' | 'ripple' | 'chromatic' | 'warp') => void;
   setEQCustomImage: (url: string | null) => void;
+  setEqOverlayVisible: (v: boolean) => void;
+  setEqIntensity: (v: number) => void;
+  setEqSensitivity: (v: number) => void;
+  setEqOverlayGeometry: (x: number, y: number, w: number, h: number) => void;
+  setEqFlip: (x: boolean, y: boolean) => void;
+  setEqTintColor: (color: string | null) => void;
+  setEqOpacity: (v: number) => void;
+  setEqMirror: (v: boolean) => void;
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -205,9 +225,21 @@ export const useCodaStore = create<CodaStore>()(
     titleMode: 'hero-to-corner',
     titleText: 'Coda Studio',
 
-    eqPresetId: 'eclipse',
-    eqReactMode: 'pulse',
+    eqPresetId: 'basic2',
+    eqReactMode: 'original',
     eqCustomImageUrl: null,
+    eqOverlayVisible: false,
+    eqIntensity: 0.5,
+    eqSensitivity: 1.0,
+    eqOverlayX: 40,
+    eqOverlayY: 40,
+    eqOverlayW: 320,
+    eqOverlayH: 180,
+    eqFlipX: false,
+    eqFlipY: false,
+    eqTintColor: null,
+    eqOpacity: 1,
+    eqMirror: false,
 
     // ---- Scene actions ----
 
@@ -464,5 +496,32 @@ export const useCodaStore = create<CodaStore>()(
 
     setEQCustomImage: (url) =>
       set((state) => { state.eqCustomImageUrl = url; }),
+
+    setEqOverlayVisible: (v) =>
+      set((state) => { state.eqOverlayVisible = v; }),
+
+    setEqIntensity: (v) =>
+      set((state) => { state.eqIntensity = v; }),
+
+    setEqSensitivity: (v) =>
+      set((state) => { state.eqSensitivity = v; }),
+
+    setEqOverlayGeometry: (x, y, w, h) =>
+      set((state) => {
+        state.eqOverlayX = x; state.eqOverlayY = y;
+        state.eqOverlayW = w; state.eqOverlayH = h;
+      }),
+
+    setEqFlip: (x, y) =>
+      set((state) => { state.eqFlipX = x; state.eqFlipY = y; }),
+
+    setEqTintColor: (color) =>
+      set((state) => { state.eqTintColor = color; }),
+
+    setEqOpacity: (v) =>
+      set((state) => { state.eqOpacity = v; }),
+
+    setEqMirror: (v) =>
+      set((state) => { state.eqMirror = v; }),
   }))
 );

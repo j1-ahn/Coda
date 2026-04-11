@@ -15,6 +15,7 @@ interface ModeOption {
 }
 
 const MODES: ModeOption[] = [
+  { value: 'original',  label: 'ORIGINAL',  icon: '◎'  },
   { value: 'pulse',     label: 'PULSE',     icon: '●'  },
   { value: 'ripple',    label: 'RIPPLE',    icon: '≈'  },
   { value: 'chromatic', label: 'CHROMATIC', icon: '◈'  },

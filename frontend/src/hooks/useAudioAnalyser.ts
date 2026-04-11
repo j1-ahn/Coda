@@ -10,6 +10,7 @@ export interface AudioAnalyserData {
   midLevel: number;           // 0~1 (250-4000Hz 평균)
   trebleLevel: number;        // 0~1 (4000-20000Hz 평균)
   overallLevel: number;       // 0~1 전체 평균
+  currentTime?: number;       // audio element currentTime (seconds)
 }
 
 const EMPTY_DATA: AudioAnalyserData = {

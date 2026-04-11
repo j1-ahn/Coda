@@ -13,6 +13,16 @@ import WhisperSyncPanel from '@/components/UI/WhisperSyncPanel';
 import TitleCustomPanel from '@/components/UI/TitleCustomPanel';
 import EqualizerTab from '@/components/Equalizer/EqualizerTab';
 
+const EQOverlayWidget = dynamic(
+  () => import('@/components/Equalizer/EQOverlayWidget'),
+  { ssr: false }
+);
+
+const EQCanvasLayer = dynamic(
+  () => import('@/components/Equalizer/EQCanvasLayer'),
+  { ssr: false }
+);
+
 // Canvas는 SSR 비활성화 (Three.js는 브라우저 전용)
 const MainScene = dynamic(
   () => import('@/components/Canvas/MainScene'),
@@ -177,6 +187,7 @@ export default function Home() {
         {/* LEFT: Canvas ───────────────────────────────────────────────────── */}
         <div className="flex-1 min-w-0 flex items-center justify-center bg-cream-200 overflow-hidden">
           <div
+            id="studio-canvas-container"
             className="relative bg-black"
             style={{
               aspectRatio: ASPECT_MAP[exportFormat],
@@ -187,6 +198,7 @@ export default function Home() {
             }}
           >
             <MainScene />
+            <EQCanvasLayer />
           </div>
         </div>
 
@@ -227,6 +239,9 @@ export default function Home() {
 
       {/* ── Export Panel (bottom, always visible) ───────────────────────── */}
       <ExportPanel />
+
+      {/* EQ chrome overlay — fixed, outside canvas container (not captured in export) */}
+      <EQOverlayWidget />
 
     </main>
   );
