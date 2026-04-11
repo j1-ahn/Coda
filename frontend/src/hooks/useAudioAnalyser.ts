@@ -22,7 +22,6 @@ const EMPTY_DATA: AudioAnalyserData = {
 
 // ---------------------------------------------------------------------------
 // Frequency range helpers
-// Convert Hz to FFT bin index given fftSize and sample rate
 // ---------------------------------------------------------------------------
 
 function hzToBin(hz: number, fftSize: number, sampleRate: number): number {
@@ -40,9 +39,13 @@ function avgRange(data: Uint8Array, fromBin: number, toBin: number): number {
 
 // ---------------------------------------------------------------------------
 // Hook
+// Accepts an optional audioEl ref for direct (stable) connection.
+// Falls back to DOM polling when no ref is given (legacy behaviour).
 // ---------------------------------------------------------------------------
 
-export function useAudioAnalyser(): AudioAnalyserData {
+export function useAudioAnalyser(
+  audioElRef?: { readonly current: HTMLAudioElement | null }
+): AudioAnalyserData {
   const [data, setData] = useState<AudioAnalyserData>(EMPTY_DATA);
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -55,12 +58,12 @@ export function useAudioAnalyser(): AudioAnalyserData {
     const analyser = analyserRef.current;
     if (!analyser) return;
 
-    const buf = new Uint8Array(analyser.frequencyBinCount); // 256 bins
+    const buf = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(buf);
 
     const ctx        = audioContextRef.current!;
     const sampleRate = ctx.sampleRate;
-    const fftSize    = analyser.fftSize; // 512
+    const fftSize    = analyser.fftSize;
 
     const bassBin   = { from: hzToBin(20,    fftSize, sampleRate), to: hzToBin(250,   fftSize, sampleRate) };
     const midBin    = { from: hzToBin(250,   fftSize, sampleRate), to: hzToBin(4000,  fftSize, sampleRate) };
@@ -77,54 +80,77 @@ export function useAudioAnalyser(): AudioAnalyserData {
     rafRef.current = requestAnimationFrame(tick);
   }, []);
 
+  // ── Connect/reconnect when audio element changes ──────────────────────────
+  const connectElement = useCallback((audioEl: HTMLAudioElement) => {
+    if (audioEl === connectedElRef.current) return; // already connected
+
+    // Tear down previous context
+    cancelAnimationFrame(rafRef.current);
+    sourceRef.current?.disconnect();
+    analyserRef.current?.disconnect();
+    audioContextRef.current?.close().catch(() => {});
+    audioContextRef.current = null;
+    analyserRef.current = null;
+    sourceRef.current = null;
+    connectedElRef.current = null;
+
+    try {
+      const ctx      = new AudioContext();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.8;
+
+      const source = ctx.createMediaElementSource(audioEl);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      audioContextRef.current = ctx;
+      analyserRef.current     = analyser;
+      sourceRef.current       = source;
+      connectedElRef.current  = audioEl;
+
+      // Resume context on user gesture if suspended
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    } catch {
+      // MediaElementSource already created elsewhere — ignore
+    }
+  }, [tick]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    let rafId = 0;
+    // ── Mode A: direct ref ──────────────────────────────────────────────────
+    if (audioElRef) {
+      const el = audioElRef.current;
+      if (el) connectElement(el);
 
-    const connect = () => {
-      const audioEl = document.querySelector('audio') as HTMLAudioElement | null;
-      if (!audioEl || audioEl === connectedElRef.current) {
-        // Already connected or no audio element yet — keep polling
-        rafId = requestAnimationFrame(connect);
-        return;
-      }
-
-      // Tear down previous context if audio element changed
-      if (audioContextRef.current) {
+      // Re-check when ref content changes (e.g., src swap)
+      return () => {
         cancelAnimationFrame(rafRef.current);
         sourceRef.current?.disconnect();
         analyserRef.current?.disconnect();
-        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current?.close().catch(() => {});
         audioContextRef.current = null;
         analyserRef.current = null;
         sourceRef.current = null;
         connectedElRef.current = null;
+      };
+    }
+
+    // ── Mode B: poll DOM (legacy) ───────────────────────────────────────────
+    let rafId = 0;
+    const poll = () => {
+      const audioEl = document.querySelector('audio') as HTMLAudioElement | null;
+      if (audioEl) {
+        connectElement(audioEl);
       }
-
-      try {
-        const ctx     = new AudioContext();
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.8;
-
-        const source = ctx.createMediaElementSource(audioEl);
-        source.connect(analyser);
-        analyser.connect(ctx.destination);
-
-        audioContextRef.current = ctx;
-        analyserRef.current     = analyser;
-        sourceRef.current       = source;
-        connectedElRef.current  = audioEl;
-
-        rafRef.current = requestAnimationFrame(tick);
-      } catch {
-        // MediaElementSource already used or other error — ignore
-      }
+      rafId = requestAnimationFrame(poll);
     };
-
-    // Start polling for audio element
-    rafId = requestAnimationFrame(connect);
+    rafId = requestAnimationFrame(poll);
 
     return () => {
       cancelAnimationFrame(rafId);
@@ -137,7 +163,16 @@ export function useAudioAnalyser(): AudioAnalyserData {
       sourceRef.current = null;
       connectedElRef.current = null;
     };
-  }, [tick]);
+  }, [audioElRef, connectElement]);
+
+  // When audioElRef.current changes (new src loaded), reconnect
+  useEffect(() => {
+    if (!audioElRef) return;
+    const el = audioElRef.current;
+    if (el && el !== connectedElRef.current) {
+      connectElement(el);
+    }
+  });
 
   return data;
 }

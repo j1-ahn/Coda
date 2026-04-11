@@ -114,7 +114,6 @@ export default function LyricOverlay() {
       outlineWidth={0.005}
       outlineColor="#000000"
       renderOrder={101}
-      depthTest={false}
     >
       {targetText}
     </Text>
