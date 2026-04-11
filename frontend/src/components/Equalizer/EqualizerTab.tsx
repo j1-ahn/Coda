@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCodaStore } from '@/store/useCodaStore';
-import { useAudioAnalyser } from '@/hooks/useAudioAnalyser';
+import type { AudioAnalyserData } from '@/hooks/useAudioAnalyser';
 import EQCanvas, { type EQPreset } from './EQCanvas';
 import PresetGrid, { DEFAULT_PRESETS } from './PresetGrid';
 import EQReactModeSelector from './EQReactModeSelector';
@@ -11,6 +11,11 @@ import EQReactModeSelector from './EQReactModeSelector';
 // Helpers
 // ---------------------------------------------------------------------------
 
+const EMPTY_DATA: AudioAnalyserData = {
+  frequencyData: new Uint8Array(256),
+  bassLevel: 0, midLevel: 0, trebleLevel: 0, overallLevel: 0,
+};
+
 function formatTime(sec: number): string {
   if (!isFinite(sec) || sec < 0) return '0:00';
   const m = Math.floor(sec / 60);
@@ -18,37 +23,78 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+function hzToBin(hz: number, fftSize: number, sampleRate: number) {
+  return Math.round((hz / (sampleRate / 2)) * (fftSize / 2));
+}
+function avgRange(data: Uint8Array, from: number, to: number) {
+  const s = Math.max(0, from), e = Math.min(data.length - 1, to);
+  if (s > e) return 0;
+  let sum = 0;
+  for (let i = s; i <= e; i++) sum += data[i];
+  return sum / ((e - s + 1) * 255);
+}
+
 // ---------------------------------------------------------------------------
-// EQAudioPlayer — self-contained drag-drop + transport inside Equalizer tab
+// EQAudioPlayer
+// AudioContext is created INSIDE togglePlay (user gesture) to avoid
+// browser autoplay policy and React StrictMode double-effect issues.
+// analyserData is pushed up to parent via onData callback every RAF frame.
 // ---------------------------------------------------------------------------
 
 interface EQAudioPlayerProps {
-  audioRef: React.RefObject<HTMLAudioElement>;
-  onAudioReady: () => void;
+  onData: (data: AudioAnalyserData) => void;
 }
 
-function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
-  const [fileName, setFileName]     = useState<string | null>(null);
-  const [isPlaying, setIsPlaying]   = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration]     = useState(0);
-  const [volume, setVolume]         = useState(1);
-  const [isDragging, setIsDragging] = useState(false);
+function EQAudioPlayer({ onData }: EQAudioPlayerProps) {
+  const audioRef       = useRef<HTMLAudioElement>(null);
+  const ctxRef         = useRef<AudioContext | null>(null);
+  const analyserRef    = useRef<AnalyserNode | null>(null);
+  const rafRef         = useRef<number>(0);
+  const objectUrlRef   = useRef<string | null>(null);
+  const fileInputRef   = useRef<HTMLInputElement>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const objectUrlRef = useRef<string | null>(null);
+  const [fileName, setFileName]       = useState<string | null>(null);
+  const [isPlaying, setIsPlaying]     = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration]       = useState(0);
+  const [volume, setVolume]           = useState(1);
+  const [isDragging, setIsDragging]   = useState(false);
+
+  // ----------------------------------------------------------
+  // RAF: read analyser and push data up
+  // ----------------------------------------------------------
+  const startRaf = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    const tick = () => {
+      const analyser = analyserRef.current;
+      const ctx      = ctxRef.current;
+      if (!analyser || !ctx) { rafRef.current = requestAnimationFrame(tick); return; }
+
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(buf);
+
+      const sr      = ctx.sampleRate;
+      const fftSize = analyser.fftSize;
+      onData({
+        frequencyData: buf,
+        bassLevel:    avgRange(buf, hzToBin(20,   fftSize, sr), hzToBin(250,   fftSize, sr)),
+        midLevel:     avgRange(buf, hzToBin(250,  fftSize, sr), hzToBin(4000,  fftSize, sr)),
+        trebleLevel:  avgRange(buf, hzToBin(4000, fftSize, sr), hzToBin(20000, fftSize, sr)),
+        overallLevel: avgRange(buf, 0, buf.length - 1),
+      });
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [onData]);
+
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
   // ----------------------------------------------------------
   // File load
   // ----------------------------------------------------------
-
   const loadFile = useCallback((file: File) => {
     if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|m4a|ogg|flac|aac)$/i)) return;
-
-    // Revoke previous blob URL
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-    }
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
 
     const url = URL.createObjectURL(file);
     objectUrlRef.current = url;
@@ -59,12 +105,10 @@ function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
 
     const audio = audioRef.current;
     if (!audio) return;
-
     audio.pause();
     audio.src = url;
     audio.load();
-    onAudioReady();
-  }, [audioRef, onAudioReady]);
+  }, []);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,61 +119,78 @@ function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
   // ----------------------------------------------------------
   // Drag & Drop
   // ----------------------------------------------------------
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
+  const handleDragOver  = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const handleDrop      = (e: React.DragEvent) => {
+    e.preventDefault(); setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file) loadFile(file);
   };
 
   // ----------------------------------------------------------
-  // Audio element event listeners
+  // Audio element events
   // ----------------------------------------------------------
-
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
-    const onTime     = () => setCurrentTime(audio.currentTime);
-    const onMeta     = () => setDuration(audio.duration);
-    const onEnded    = () => { setIsPlaying(false); setCurrentTime(0); };
-    const onPlay     = () => setIsPlaying(true);
-    const onPause    = () => setIsPlaying(false);
-
-    audio.addEventListener('timeupdate', onTime);
-    audio.addEventListener('loadedmetadata', onMeta);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-
+    const onTime  = () => setCurrentTime(audio.currentTime);
+    const onMeta  = () => setDuration(audio.duration);
+    const onEnded = () => { setIsPlaying(false); setCurrentTime(0); };
+    const onPlay  = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    audio.addEventListener('timeupdate',    onTime);
+    audio.addEventListener('loadedmetadata',onMeta);
+    audio.addEventListener('ended',         onEnded);
+    audio.addEventListener('play',          onPlay);
+    audio.addEventListener('pause',         onPause);
     return () => {
-      audio.removeEventListener('timeupdate', onTime);
-      audio.removeEventListener('loadedmetadata', onMeta);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('timeupdate',    onTime);
+      audio.removeEventListener('loadedmetadata',onMeta);
+      audio.removeEventListener('ended',         onEnded);
+      audio.removeEventListener('play',          onPlay);
+      audio.removeEventListener('pause',         onPause);
     };
-  }, [audioRef]);
+  }, []);
 
   // ----------------------------------------------------------
-  // Controls
+  // togglePlay — AudioContext created HERE (user gesture)
   // ----------------------------------------------------------
-
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio || !audio.src) return;
+
+    // First play: create AudioContext + AnalyserNode inside user gesture
+    if (!ctxRef.current) {
+      try {
+        const ctx      = new AudioContext();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.8;
+        const source = ctx.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(ctx.destination);
+        ctxRef.current   = ctx;
+        analyserRef.current = analyser;
+        startRaf();
+      } catch (e) {
+        console.error('[EQAudioPlayer] AudioContext setup failed:', e);
+      }
+    }
+
+    // Subsequent plays: just resume if suspended
+    if (ctxRef.current?.state === 'suspended') {
+      ctxRef.current.resume().catch(() => {});
+    }
+
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play().catch(() => setIsPlaying(false));
+      audio.play().catch((err) => {
+        console.warn('[EQAudioPlayer] play() rejected:', err);
+        setIsPlaying(false);
+      });
     }
-  };
+  }, [isPlaying, startRaf]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current;
@@ -148,17 +209,15 @@ function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
   // ----------------------------------------------------------
   // Render
   // ----------------------------------------------------------
-
   const hasFile = !!fileName;
 
   return (
     <div className="px-3 pt-2 pb-1 flex flex-col gap-1.5 bg-cream-200 border-b border-cream-300 shrink-0">
 
-      {/* Hidden audio element — this is what analyser connects to */}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} preload="metadata" />
 
-      {/* Drop zone / track name row */}
+      {/* Drop zone */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -173,32 +232,20 @@ function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
             : 'border-dashed border-cream-400 hover:border-ink-400 hover:bg-cream-100',
         ].join(' ')}
       >
-        {/* Icon */}
         <div className="shrink-0 text-ink-400">
           {hasFile ? (
-            /* waveform icon */
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2">
               <polyline points="0,7 2,3 4,11 6,5 8,9 10,2 12,7 14,7" />
             </svg>
           ) : (
-            /* upload icon */
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2">
-              <path d="M7 9V3M4 6l3-3 3 3" />
-              <path d="M2 11h10" />
+              <path d="M7 9V3M4 6l3-3 3 3" /><path d="M2 11h10" />
             </svg>
           )}
         </div>
-
-        {/* Label */}
         <span className="flex-1 truncate text-[11px] text-ink-600 leading-none">
-          {hasFile
-            ? fileName
-            : isDragging
-            ? 'Drop to load…'
-            : 'Drop MP3 / WAV here'}
+          {hasFile ? fileName : isDragging ? 'Drop to load…' : 'Drop MP3 / WAV here'}
         </span>
-
-        {/* File button */}
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
@@ -206,20 +253,11 @@ function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
         >
           {hasFile ? 'CHANGE' : 'BROWSE'}
         </button>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac"
-          className="sr-only"
-          onChange={handleFileInput}
-        />
+        <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" className="sr-only" onChange={handleFileInput} />
       </div>
 
-      {/* Transport row */}
+      {/* Transport */}
       <div className="flex items-center gap-2">
-
-        {/* Play / Pause */}
         <button
           onClick={togglePlay}
           disabled={!hasFile}
@@ -228,8 +266,7 @@ function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
         >
           {isPlaying ? (
             <svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor">
-              <rect x="0" y="0" width="3" height="9" />
-              <rect x="6" y="0" width="3" height="9" />
+              <rect x="0" y="0" width="3" height="9" /><rect x="6" y="0" width="3" height="9" />
             </svg>
           ) : (
             <svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor">
@@ -237,35 +274,20 @@ function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
             </svg>
           )}
         </button>
-
-        {/* Seek bar */}
-        <input
-          type="range"
-          min={0}
-          max={duration || 1}
-          step={0.05}
-          value={currentTime}
-          onChange={handleSeek}
-          disabled={!hasFile}
+        <input type="range" min={0} max={duration || 1} step={0.05} value={currentTime}
+          onChange={handleSeek} disabled={!hasFile}
           className="flex-1 h-0.5 cursor-pointer disabled:opacity-20"
           style={{ accentColor: '#1a1a16' }}
         />
-
-        {/* Timecode */}
         <span className="font-mono text-[10px] text-ink-400 tabular-nums shrink-0 w-16 text-right">
           {formatTime(currentTime)}<span className="text-ink-200 mx-0.5">/</span>{formatTime(duration)}
         </span>
       </div>
 
-      {/* Volume row */}
+      {/* Volume */}
       <div className="flex items-center gap-2">
         <span className="label-caps text-ink-300 shrink-0">VOL</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={volume}
+        <input type="range" min={0} max={1} step={0.01} value={volume}
           onChange={handleVolume}
           className="flex-1 h-0.5 cursor-pointer"
           style={{ accentColor: '#1a1a16' }}
@@ -283,7 +305,6 @@ function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
 // ---------------------------------------------------------------------------
 
 export default function EqualizerTab() {
-  // Zustand EQ state
   const eqPresetId       = useCodaStore((s) => s.eqPresetId);
   const eqReactMode      = useCodaStore((s) => s.eqReactMode);
   const eqCustomImageUrl = useCodaStore((s) => s.eqCustomImageUrl);
@@ -291,102 +312,64 @@ export default function EqualizerTab() {
   const setEQReactMode   = useCodaStore((s) => s.setEQReactMode);
   const setEQCustomImage = useCodaStore((s) => s.setEQCustomImage);
 
-  // Shared audio element ref — passed to both EQAudioPlayer and useAudioAnalyser
-  const audioRef = useRef<HTMLAudioElement>(null);
+  // analyserData received from EQAudioPlayer via callback
+  const [analyserData, setAnalyserData] = useState<AudioAnalyserData>(EMPTY_DATA);
+  const [presets, setPresets]           = useState<EQPreset[]>(DEFAULT_PRESETS);
 
-  // analyserReady flag forces re-render after audio element is connected
-  const [analyserKey, setAnalyserKey] = useState(0);
-
-  // Notify analyser that the audio element is ready / src changed
-  const handleAudioReady = useCallback(() => {
-    setAnalyserKey((k) => k + 1);
-  }, []);
-
-  // Local preset list (may be patched with custom image URL)
-  const [presets, setPresets] = useState<EQPreset[]>(DEFAULT_PRESETS);
-
-  // Sync custom image from store into preset list on mount
   useEffect(() => {
     if (eqCustomImageUrl) {
-      setPresets((prev) =>
-        prev.map((p) =>
-          p.id === 'custom' ? { ...p, imagePath: eqCustomImageUrl } : p
-        )
-      );
+      setPresets((prev) => prev.map((p) => p.id === 'custom' ? { ...p, imagePath: eqCustomImageUrl } : p));
     }
   }, [eqCustomImageUrl]);
 
-  // Derived selected preset (always reflect eqReactMode from store)
   const selectedPreset: EQPreset = (() => {
     const found = presets.find((p) => p.id === eqPresetId);
     if (!found) return { ...DEFAULT_PRESETS[0], reactMode: eqReactMode };
     return { ...found, reactMode: eqReactMode };
   })();
 
-  // Web Audio analyser — directly connected to our audio element ref
-  const analyserData = useAudioAnalyser(audioRef);
-
-  // Suppress analyserKey lint warning — used to force re-trigger analyser
-  void analyserKey;
-
-  // ---------------------------------------------------------------------------
-  // Handlers
-  // ---------------------------------------------------------------------------
-
   const handlePresetSelect = (preset: EQPreset) => {
     setEQPreset(preset.id);
     setEQReactMode(preset.reactMode);
-    setPresets((prev) =>
-      prev.map((p) => (p.id === preset.id ? { ...p, imagePath: preset.imagePath } : p))
-    );
+    setPresets((prev) => prev.map((p) => p.id === preset.id ? { ...p, imagePath: preset.imagePath } : p));
   };
 
-  const handleCustomImage = (url: string, _preset: EQPreset) => {
+  const handleCustomImage = (url: string) => {
     setEQCustomImage(url);
     setEQPreset('custom');
   };
 
-  const handleReactModeChange = (mode: EQPreset['reactMode']) => {
-    setEQReactMode(mode);
-  };
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+  void handleCustomImage; // used by PresetGrid callback below
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
-      {/* Header */}
       <div className="px-3 pt-2.5 pb-1.5 shrink-0 flex items-center justify-between border-b border-cream-300">
         <span className="label-caps">Equalizer</span>
         <span className="text-[9px] text-ink-300 label-caps">Web Audio API</span>
       </div>
 
-      {/* ── Audio Player (drag-drop + transport) ── */}
-      <EQAudioPlayer audioRef={audioRef} onAudioReady={handleAudioReady} />
+      {/* Audio player — pushes analyser data up via onData */}
+      <EQAudioPlayer onData={setAnalyserData} />
 
-      {/* ── EQ Canvas — flex-1 fills remaining space ── */}
+      {/* EQ Canvas */}
       <div className="flex-1 min-h-0 relative">
         <EQCanvas preset={selectedPreset} analyserData={analyserData} />
       </div>
 
-      {/* ── Preset Grid ── */}
+      {/* Preset Grid */}
       <div className="shrink-0">
         <PresetGrid
           presets={presets}
           selectedId={eqPresetId}
           onSelect={handlePresetSelect}
-          onCustomImage={handleCustomImage}
+          onCustomImage={(url, _preset) => { setEQCustomImage(url); setEQPreset('custom'); }}
         />
       </div>
 
-      {/* ── React Mode Selector ── */}
+      {/* React Mode Selector */}
       <div className="shrink-0">
-        <EQReactModeSelector
-          value={eqReactMode}
-          onChange={handleReactModeChange}
-        />
+        <EQReactModeSelector value={eqReactMode} onChange={setEQReactMode} />
       </div>
 
     </div>
