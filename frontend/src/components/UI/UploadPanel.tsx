@@ -248,10 +248,11 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
 
   return (
     <div className="flex flex-col gap-3 p-3 h-full overflow-y-auto">
-      {mode !== 'audio'  && bgSection}
-      {mode === 'all'    && <div className="border-t border-cream-300" />}
+      {mode !== 'audio'      && bgSection}
+      {mode === 'all'        && <div className="border-t border-cream-300" />}
 
-      {/* ── Section: Audio Tracks ────────────────────────────────────────── */}
+      {/* ── Section: Audio Tracks (hidden when mode='background') ─────────── */}
+      {mode !== 'background' && (
       <div className="flex-1 flex flex-col gap-2 min-h-0">
         <div className="flex items-center justify-between">
           <SectionLabel>오디오 트랙</SectionLabel>
@@ -301,6 +302,7 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }
