@@ -1,6 +1,7 @@
 'use client';
 
 import { useCodaStore, VFXParams } from '@/store/useCodaStore';
+import type { Scene } from '@/store/useCodaStore';
 
 // ---------------------------------------------------------------------------
 // Toggle Switch
@@ -93,8 +94,16 @@ function GroupHeader({
 // ---------------------------------------------------------------------------
 
 export default function VFXPanel() {
-  const vfxParams = useCodaStore((s) => s.vfxParams);
-  const updateVFX = useCodaStore((s) => s.updateVFX);
+  const vfxParams          = useCodaStore((s) => s.vfxParams);
+  const updateVFX          = useCodaStore((s) => s.updateVFX);
+  const scenes             = useCodaStore((s) => s.scenes);
+  const activeSceneId      = useCodaStore((s) => s.activeSceneId);
+  const setParallaxEnabled = useCodaStore((s) => s.setParallaxEnabled);
+  const setParallaxStrength = useCodaStore((s) => s.setParallaxStrength);
+
+  const activeScene = scenes.find((s) => s.id === activeSceneId) ?? scenes[0];
+  const parallaxEnabled  = activeScene?.effects.parallaxEnabled  ?? false;
+  const parallaxStrength = activeScene?.effects.parallaxStrength ?? 0.08;
 
   const { bloom, filmGrain, vignette } = vfxParams;
 
@@ -163,6 +172,25 @@ export default function VFXPanel() {
             value={vignette.darkness}
             onChange={(v) => set('vignette', { darkness: v })}
             disabled={!vignette.enabled}
+          />
+        </div>
+      </div>
+
+      <div className="border-t border-cream-300" />
+
+      {/* ── Parallax ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-2">
+        <GroupHeader
+          label="Parallax"
+          enabled={parallaxEnabled}
+          onToggle={(v) => activeScene && setParallaxEnabled(activeScene.id, v)}
+        />
+        <div className="flex flex-col gap-2 pl-1">
+          <SliderRow
+            label="Strength"
+            value={parallaxStrength}
+            onChange={(v) => activeScene && setParallaxStrength(activeScene.id, v)}
+            disabled={!parallaxEnabled}
           />
         </div>
       </div>

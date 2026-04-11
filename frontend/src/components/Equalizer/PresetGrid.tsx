@@ -46,35 +46,38 @@ interface PresetCardProps {
 }
 
 function PresetCard({ preset, isSelected, onSelect }: PresetCardProps) {
-  const tintStyle = {
-    backgroundColor: preset.colorTint + '33',
-    borderColor: preset.colorTint + '66',
-  };
-
   return (
     <button
       type="button"
       onClick={() => onSelect(preset)}
       className={[
-        'relative aspect-square w-full overflow-hidden flex flex-col items-center justify-center gap-1',
+        'relative h-7 w-full overflow-hidden flex items-center justify-center',
         'transition-none',
         isSelected
           ? 'border-2 border-ink-900'
-          : 'border border-cream-300 hover:border-ink-300',
+          : 'border border-cream-300 hover:border-ink-400',
       ].join(' ')}
       aria-pressed={isSelected}
       aria-label={preset.name}
     >
-      <div className="absolute inset-0" style={tintStyle} />
-      <div className="absolute inset-0 bg-ink-900/20" />
+      {/* color swatch background */}
+      <div
+        className="absolute inset-0"
+        style={{ backgroundColor: preset.colorTint + '55' }}
+      />
+      {/* name */}
       <span
-        className="relative z-10 label-caps text-cream-100 text-center leading-tight px-1"
-        style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+        className="relative z-10 text-[8px] font-bold tracking-wider text-ink-900 leading-none text-center px-0.5"
+        style={{ textShadow: `0 0 6px ${preset.colorTint}cc, 0 1px 2px rgba(0,0,0,0.6)` }}
       >
         {preset.name}
       </span>
+      {/* selected dot */}
       {isSelected && (
-        <div className="absolute bottom-1 right-1 w-1.5 h-1.5 bg-cream-100 rounded-full" />
+        <div
+          className="absolute right-1 top-1 w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: preset.colorTint }}
+        />
       )}
     </button>
   );
@@ -90,11 +93,12 @@ export default function PresetGrid({
   onSelect,
 }: PresetGridProps) {
   return (
-    <div className="px-3 py-2 flex flex-col gap-2 bg-cream-100 border-t border-cream-300">
+    <div className="px-3 py-2 flex flex-col gap-1.5 bg-cream-100 border-t border-cream-300">
       <span className="label-caps">Preset</span>
+      {/* 4열 × 2행 = 8개 표시, 나머지는 내부 스크롤 */}
       <div
-        className="grid grid-cols-4 gap-1.5 overflow-y-auto"
-        style={{ maxHeight: '180px' }}
+        className="grid grid-cols-4 gap-1 overflow-y-auto"
+        style={{ maxHeight: '64px' }}   /* 28px × 2rows + 4px gap + 4px buffer */
       >
         {presets.map((preset) => (
           <PresetCard

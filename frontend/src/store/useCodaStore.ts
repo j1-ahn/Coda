@@ -37,6 +37,7 @@ export interface Scene {
   textTracks: TextTrack[];
   effects: {
     parallaxEnabled: boolean;
+    parallaxStrength: number;         // 0~1 (default 0.08)
     maskingEnabled: boolean;
     loopMode: 'none' | 'wind' | 'ripple';
     loopStrength: number;             // 0~1
@@ -177,6 +178,8 @@ export interface CodaStore {
   setTitleText: (text: string) => void;
 
   // Loop animation
+  setParallaxEnabled: (sceneId: string, enabled: boolean) => void;
+  setParallaxStrength: (sceneId: string, strength: number) => void;
   setLoopMode: (sceneId: string, mode: 'none' | 'wind' | 'ripple') => void;
   setLoopStrength: (sceneId: string, strength: number) => void;
 
@@ -194,7 +197,7 @@ const makeDefaultScene = (order: number): Scene => ({
   background: { type: 'image', url: null, fileName: null },
   durationSec: 0,
   textTracks: [],
-  effects: { parallaxEnabled: false, maskingEnabled: false, loopMode: 'none', loopStrength: 0.5 },
+  effects: { parallaxEnabled: false, parallaxStrength: 0.08, maskingEnabled: false, loopMode: 'none', loopStrength: 0.5 },
 });
 
 const defaultVFX: VFXParams = {
@@ -469,6 +472,20 @@ export const useCodaStore = create<CodaStore>()(
         if (!track) return;
         const idx = track.whisperSegments.findIndex((s) => s.id === segmentId);
         if (idx !== -1) track.whisperSegments.splice(idx, 1);
+      }),
+
+    // ---- Parallax actions ----
+
+    setParallaxEnabled: (sceneId, enabled) =>
+      set((state) => {
+        const scene = state.scenes.find((s) => s.id === sceneId);
+        if (scene) scene.effects.parallaxEnabled = enabled;
+      }),
+
+    setParallaxStrength: (sceneId, strength) =>
+      set((state) => {
+        const scene = state.scenes.find((s) => s.id === sceneId);
+        if (scene) scene.effects.parallaxStrength = strength;
       }),
 
     // ---- Loop animation actions ----

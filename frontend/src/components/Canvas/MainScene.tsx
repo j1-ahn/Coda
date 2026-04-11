@@ -53,7 +53,7 @@ function ImageBackgroundMesh({ scene }: BackgroundMeshProps) {
   const meshRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
   const texture = useTexture(scene.background.url ?? '');
-  const parallaxPos = useParallax(0.08);
+  const parallaxPos = useParallax(scene.effects.parallaxStrength ?? 0.08);
 
   useFrame(() => {
     if (!meshRef.current || !scene.effects.parallaxEnabled) return;
@@ -78,7 +78,7 @@ function ImageBackgroundMesh({ scene }: BackgroundMeshProps) {
 function VideoBackgroundMesh({ scene }: BackgroundMeshProps) {
   const meshRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
-  const parallaxPos = useParallax(0.08);
+  const parallaxPos = useParallax(scene.effects.parallaxStrength ?? 0.08);
 
   const { video, texture } = useMemo(() => {
     const vid = document.createElement('video');
