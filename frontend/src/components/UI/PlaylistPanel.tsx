@@ -51,7 +51,7 @@ export default function PlaylistPanel() {
   const [dragOver, setDragOver] = useState(false);
 
   const handleFiles = useCallback(async (files: FileList) => {
-    const remaining = 10 - audioTracks.length;
+    const remaining = 50 - audioTracks.length;
     const toAdd = Array.from(files).slice(0, remaining);
     for (const file of toAdd) {
       if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|m4a|ogg|flac|aac)$/i)) continue;
@@ -86,7 +86,7 @@ export default function PlaylistPanel() {
       <div className="flex items-center justify-between px-3 py-2 bg-cream-200 border-b border-cream-300">
         <span className="label-caps">Playlist</span>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-ink-300 tabular-nums">{audioTracks.length}/10</span>
+          <span className="text-[9px] text-ink-300 tabular-nums">{audioTracks.length}/50</span>
           <button
             onClick={() => setPlaylistVisible(!playlistVisible)}
             className={`px-2 py-0.5 text-[9px] label-caps border transition-colors ${
@@ -123,7 +123,7 @@ export default function PlaylistPanel() {
       </div>
 
       {/* ── Upload zone ────────────────────────────────────────────────────── */}
-      {audioTracks.length < 10 && (
+      {audioTracks.length < 50 && (
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}

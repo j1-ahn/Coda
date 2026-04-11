@@ -153,7 +153,7 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
 
   const handleAudioFiles = useCallback(
     async (files: FileList) => {
-      const remaining = 10 - audioTracks.length;
+      const remaining = 50 - audioTracks.length;
       const toAdd = Array.from(files).slice(0, remaining);
       for (const file of toAdd) {
         const url = URL.createObjectURL(file);
@@ -257,12 +257,12 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
         <div className="flex items-center justify-between">
           <SectionLabel>오디오 트랙</SectionLabel>
           <span className="text-[10px] text-ink-300">
-            {audioTracks.length}/10
+            {audioTracks.length}/50
           </span>
         </div>
 
         {/* Audio drop zone */}
-        {audioTracks.length < 10 && (
+        {audioTracks.length < 50 && (
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleAudioDrop}

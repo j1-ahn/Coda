@@ -1,317 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useCodaStore } from '@/store/useCodaStore';
 import type { AudioAnalyserData } from '@/hooks/useAudioAnalyser';
 import EQCanvas, { type EQPreset } from './EQCanvas';
 import PresetGrid, { DEFAULT_PRESETS } from './PresetGrid';
-import { eqAnalyserRef } from '@/lib/eqAnalyserRef';
+import { eqAnalyserRef, EMPTY_ANALYSER } from '@/lib/eqAnalyserRef';
 import PlaylistPanel from '@/components/UI/PlaylistPanel';
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const EMPTY_DATA: AudioAnalyserData = {
-  frequencyData: new Uint8Array(256),
-  bassLevel: 0, midLevel: 0, trebleLevel: 0, overallLevel: 0,
-};
-
-function formatTime(sec: number): string {
-  if (!isFinite(sec) || sec < 0) return '0:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function hzToBin(hz: number, fftSize: number, sampleRate: number) {
-  return Math.round((hz / (sampleRate / 2)) * (fftSize / 2));
-}
-function avgRange(data: Uint8Array, from: number, to: number) {
-  const s = Math.max(0, from), e = Math.min(data.length - 1, to);
-  if (s > e) return 0;
-  let sum = 0;
-  for (let i = s; i <= e; i++) sum += data[i];
-  return sum / ((e - s + 1) * 255);
-}
-
-// ---------------------------------------------------------------------------
-// EQAudioPlayer
-// AudioContext is created INSIDE togglePlay (user gesture) to avoid
-// browser autoplay policy and React StrictMode double-effect issues.
-// analyserData is pushed up to parent via onData callback every RAF frame.
-// ---------------------------------------------------------------------------
-
-interface EQAudioPlayerProps {
-  onData: (data: AudioAnalyserData) => void;
-}
-
-function EQAudioPlayer({ onData }: EQAudioPlayerProps) {
-  const audioRef       = useRef<HTMLAudioElement>(null);
-  const ctxRef         = useRef<AudioContext | null>(null);
-  const analyserRef    = useRef<AnalyserNode | null>(null);
-  const rafRef         = useRef<number>(0);
-  const objectUrlRef   = useRef<string | null>(null);
-  const fileInputRef   = useRef<HTMLInputElement>(null);
-
-  const [fileName, setFileName]       = useState<string | null>(null);
-  const [isPlaying, setIsPlaying]     = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration]       = useState(0);
-  const [volume, setVolume]           = useState(1);
-  const [isDragging, setIsDragging]   = useState(false);
-
-  // ----------------------------------------------------------
-  // RAF: read analyser and push data up
-  // ----------------------------------------------------------
-  const startRaf = useCallback(() => {
-    cancelAnimationFrame(rafRef.current);
-    const tick = () => {
-      const analyser = analyserRef.current;
-      const ctx      = ctxRef.current;
-      if (!analyser || !ctx) { rafRef.current = requestAnimationFrame(tick); return; }
-
-      const buf = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(buf);
-
-      const sr      = ctx.sampleRate;
-      const fftSize = analyser.fftSize;
-      onData({
-        frequencyData: buf,
-        bassLevel:    avgRange(buf, hzToBin(20,   fftSize, sr), hzToBin(250,   fftSize, sr)),
-        midLevel:     avgRange(buf, hzToBin(250,  fftSize, sr), hzToBin(4000,  fftSize, sr)),
-        trebleLevel:  avgRange(buf, hzToBin(4000, fftSize, sr), hzToBin(20000, fftSize, sr)),
-        overallLevel: avgRange(buf, 0, buf.length - 1),
-        currentTime:  audioRef.current?.currentTime,
-      });
-      eqAnalyserRef.current = {
-        frequencyData: buf,
-        bassLevel:    avgRange(buf, hzToBin(20,   fftSize, sr), hzToBin(250,   fftSize, sr)),
-        midLevel:     avgRange(buf, hzToBin(250,  fftSize, sr), hzToBin(4000,  fftSize, sr)),
-        trebleLevel:  avgRange(buf, hzToBin(4000, fftSize, sr), hzToBin(20000, fftSize, sr)),
-        overallLevel: avgRange(buf, 0, buf.length - 1),
-        currentTime:  audioRef.current?.currentTime,
-      };
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-  }, [onData]);
-
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
-
-  // ----------------------------------------------------------
-  // File load
-  // ----------------------------------------------------------
-  const loadFile = useCallback((file: File) => {
-    if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|m4a|ogg|flac|aac)$/i)) return;
-    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-
-    const url = URL.createObjectURL(file);
-    objectUrlRef.current = url;
-    setFileName(file.name);
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.pause();
-    audio.src = url;
-    audio.load();
-  }, []);
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) loadFile(file);
-    e.target.value = '';
-  };
-
-  // ----------------------------------------------------------
-  // Drag & Drop
-  // ----------------------------------------------------------
-  const handleDragOver  = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = () => setIsDragging(false);
-  const handleDrop      = (e: React.DragEvent) => {
-    e.preventDefault(); setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) loadFile(file);
-  };
-
-  // ----------------------------------------------------------
-  // Audio element events
-  // ----------------------------------------------------------
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const onTime  = () => setCurrentTime(audio.currentTime);
-    const onMeta  = () => setDuration(audio.duration);
-    const onEnded = () => { setIsPlaying(false); setCurrentTime(0); };
-    const onPlay  = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    audio.addEventListener('timeupdate',    onTime);
-    audio.addEventListener('loadedmetadata',onMeta);
-    audio.addEventListener('ended',         onEnded);
-    audio.addEventListener('play',          onPlay);
-    audio.addEventListener('pause',         onPause);
-    return () => {
-      audio.removeEventListener('timeupdate',    onTime);
-      audio.removeEventListener('loadedmetadata',onMeta);
-      audio.removeEventListener('ended',         onEnded);
-      audio.removeEventListener('play',          onPlay);
-      audio.removeEventListener('pause',         onPause);
-    };
-  }, []);
-
-  // ----------------------------------------------------------
-  // togglePlay — AudioContext created HERE (user gesture)
-  // ----------------------------------------------------------
-  const togglePlay = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio || !audio.src) return;
-
-    // First play: create AudioContext + AnalyserNode inside user gesture
-    if (!ctxRef.current) {
-      try {
-        const ctx      = new AudioContext();
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.8;
-        const source = ctx.createMediaElementSource(audio);
-        source.connect(analyser);
-        analyser.connect(ctx.destination);
-        ctxRef.current   = ctx;
-        analyserRef.current = analyser;
-        startRaf();
-      } catch (e) {
-        console.error('[EQAudioPlayer] AudioContext setup failed:', e);
-      }
-    }
-
-    // Subsequent plays: just resume if suspended
-    if (ctxRef.current?.state === 'suspended') {
-      ctxRef.current.resume().catch(() => {});
-    }
-
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      audio.play().catch((err) => {
-        console.warn('[EQAudioPlayer] play() rejected:', err);
-        setIsPlaying(false);
-      });
-    }
-  }, [isPlaying, startRaf]);
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const t = parseFloat(e.target.value);
-    audio.currentTime = t;
-    setCurrentTime(t);
-  };
-
-  const handleVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = parseFloat(e.target.value);
-    setVolume(v);
-    if (audioRef.current) audioRef.current.volume = v;
-  };
-
-  // ----------------------------------------------------------
-  // Render
-  // ----------------------------------------------------------
-  const hasFile = !!fileName;
-
-  return (
-    <div className="px-3 pt-2 pb-1 flex flex-col gap-1.5 bg-cream-200 border-b border-cream-300 shrink-0">
-
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-      <audio ref={audioRef} preload="metadata" />
-
-      {/* Drop zone */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => !hasFile && fileInputRef.current?.click()}
-        className={[
-          'flex items-center gap-2 px-2 py-1.5 border transition-colors cursor-pointer select-none',
-          isDragging
-            ? 'border-ink-900 bg-ink-900/5'
-            : hasFile
-            ? 'border-cream-300 bg-cream-100 cursor-default'
-            : 'border-dashed border-cream-400 hover:border-ink-400 hover:bg-cream-100',
-        ].join(' ')}
-      >
-        <div className="shrink-0 text-ink-400">
-          {hasFile ? (
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2">
-              <polyline points="0,7 2,3 4,11 6,5 8,9 10,2 12,7 14,7" />
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2">
-              <path d="M7 9V3M4 6l3-3 3 3" /><path d="M2 11h10" />
-            </svg>
-          )}
-        </div>
-        <span className="flex-1 truncate text-[11px] text-ink-600 leading-none">
-          {hasFile ? fileName : isDragging ? 'Drop to load…' : 'Drop MP3 / WAV here'}
-        </span>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-          className="shrink-0 px-1.5 py-0.5 border border-cream-300 text-[9px] label-caps text-ink-500 hover:border-ink-400 hover:text-ink-900 transition-colors"
-        >
-          {hasFile ? 'CHANGE' : 'BROWSE'}
-        </button>
-        <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" className="sr-only" onChange={handleFileInput} />
-      </div>
-
-      {/* Transport */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={togglePlay}
-          disabled={!hasFile}
-          className="w-6 h-6 flex items-center justify-center bg-ink-900 text-cream-100 hover:bg-ink-700 transition-colors disabled:opacity-25 disabled:cursor-default shrink-0"
-          aria-label={isPlaying ? 'Pause' : 'Play'}
-        >
-          {isPlaying ? (
-            <svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor">
-              <rect x="0" y="0" width="3" height="9" /><rect x="6" y="0" width="3" height="9" />
-            </svg>
-          ) : (
-            <svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor">
-              <polygon points="1,0 9,4.5 1,9" />
-            </svg>
-          )}
-        </button>
-        <input type="range" min={0} max={duration || 1} step={0.05} value={currentTime}
-          onChange={handleSeek} disabled={!hasFile}
-          className="flex-1 h-0.5 cursor-pointer disabled:opacity-20"
-          style={{ accentColor: '#1a1a16' }}
-        />
-        <span className="font-mono text-[10px] text-ink-400 tabular-nums shrink-0 w-16 text-right">
-          {formatTime(currentTime)}<span className="text-ink-200 mx-0.5">/</span>{formatTime(duration)}
-        </span>
-      </div>
-
-      {/* Volume */}
-      <div className="flex items-center gap-2">
-        <span className="label-caps text-ink-300 shrink-0">VOL</span>
-        <input type="range" min={0} max={1} step={0.01} value={volume}
-          onChange={handleVolume}
-          className="flex-1 h-0.5 cursor-pointer"
-          style={{ accentColor: '#1a1a16' }}
-        />
-        <span className="font-mono text-[10px] text-ink-300 tabular-nums shrink-0 w-6 text-right">
-          {Math.round(volume * 100)}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // EqualizerTab
+// (EQAudioPlayer removed — audio engine now lives in CanvasBottomBar which
+//  pushes data into eqAnalyserRef at 60fps; EqualizerTab polls it via RAF)
 // ---------------------------------------------------------------------------
 
 export default function EqualizerTab() {
@@ -330,10 +30,20 @@ export default function EqualizerTab() {
   const setEqOverlayGeometry = useCodaStore((s) => s.setEqOverlayGeometry);
   const setEqOverlayVisible  = useCodaStore((s) => s.setEqOverlayVisible);
 
-  // analyserData received from EQAudioPlayer via callback
-  const [analyserData, setAnalyserData] = useState<AudioAnalyserData>(EMPTY_DATA);
+  // analyserData — polled from eqAnalyserRef (updated by CanvasBottomBar at 60fps)
+  const [analyserData, setAnalyserData] = useState<AudioAnalyserData>(EMPTY_ANALYSER);
   const [presets, setPresets]           = useState<EQPreset[]>(DEFAULT_PRESETS);
   const [pendingColor, setPendingColor] = useState<string | null>(null);
+
+  useEffect(() => {
+    let animId: number;
+    const tick = () => {
+      animId = requestAnimationFrame(tick);
+      setAnalyserData({ ...eqAnalyserRef.current });
+    };
+    animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
+  }, []);
 
 
   const selectedPreset: EQPreset = (() => {
@@ -402,9 +112,6 @@ export default function EqualizerTab() {
         <span className="label-caps">Equalizer</span>
         <span className="text-[9px] text-ink-300 label-caps">Web Audio API</span>
       </div>
-
-      {/* Audio player — pushes analyser data up via onData */}
-      <EQAudioPlayer onData={setAnalyserData} />
 
       {/* EQ Canvas — draggable to studio canvas */}
       <div
