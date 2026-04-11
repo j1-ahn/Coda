@@ -109,10 +109,17 @@ export function useAudioAnalyser(
       sourceRef.current       = source;
       connectedElRef.current  = audioEl;
 
-      // Resume context on user gesture if suspended
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
+      // createMediaElementSource routes ALL audio through the Web Audio graph.
+      // If the AudioContext is suspended, the audio element is silenced entirely.
+      // We must resume() on every play attempt — 'play' fires within the user
+      // gesture chain (click → audio.play() → 'play' event) so resume() succeeds.
+      const onPlay = () => {
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        // Also kick the RAF loop in case it was paused
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      audioEl.addEventListener('play', onPlay);
 
       rafRef.current = requestAnimationFrame(tick);
     } catch {

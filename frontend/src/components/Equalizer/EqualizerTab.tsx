@@ -124,8 +124,6 @@ function EQAudioPlayer({ audioRef, onAudioReady }: EQAudioPlayerProps) {
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio || !audio.src) return;
-
-    // Resume AudioContext if needed (user gesture guard)
     if (isPlaying) {
       audio.pause();
     } else {
