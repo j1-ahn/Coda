@@ -476,9 +476,6 @@ export default function EqualizerTab() {
         </button>
       </div>
 
-      {/* Playlist — Color 바로 위 */}
-      <PlaylistPanel />
-
       {/* Color tint — pick then APPLY */}
       {(() => {
         const presetDefault = presets.find((p) => p.id === eqPresetId)?.colorTint ?? '#ffffff';
@@ -521,6 +518,9 @@ export default function EqualizerTab() {
           </div>
         );
       })()}
+
+      {/* Playlist — Color 바로 아래 */}
+      <PlaylistPanel />
 
     </div>
   );
