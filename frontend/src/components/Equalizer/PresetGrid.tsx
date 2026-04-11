@@ -98,7 +98,7 @@ export default function PresetGrid({
       {/* 4열 × 2행 = 8개 표시, 나머지는 내부 스크롤 */}
       <div
         className="grid grid-cols-4 gap-1 overflow-y-auto"
-        style={{ maxHeight: '64px' }}   /* 28px × 2rows + 4px gap + 4px buffer */
+        style={{ maxHeight: '128px' }}   /* 28px × 4rows + 4px × 3gaps + 4px buffer */
       >
         {presets.map((preset) => (
           <PresetCard

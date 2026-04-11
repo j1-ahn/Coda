@@ -408,7 +408,7 @@ export default function EqualizerTab() {
       {/* EQ Canvas — draggable to studio canvas */}
       <div
         className="relative shrink-0 cursor-grab active:cursor-grabbing"
-        style={{ height: '160px' }}
+        style={{ height: '140px' }}
         onMouseDown={handleEQDragStart}
       >
         <EQCanvas preset={selectedPreset} analyserData={analyserData} intensity={1} sensitivity={eqIntensity * 2} />

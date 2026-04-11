@@ -183,6 +183,12 @@ export interface CodaStore {
   setLoopMode: (sceneId: string, mode: 'none' | 'wind' | 'ripple') => void;
   setLoopStrength: (sceneId: string, strength: number) => void;
 
+  // Playlist overlay
+  playlistMode: 'simple' | 'box' | 'list';
+  playlistVisible: boolean;
+  setPlaylistMode: (mode: CodaStore['playlistMode']) => void;
+  setPlaylistVisible: (v: boolean) => void;
+
   // Export
   setExportFormat: (format: CodaStore['exportFormat']) => void;
 }
@@ -247,6 +253,9 @@ export const useCodaStore = create<CodaStore>()(
     eqTintColor: null,
     eqOpacity: 1,
     eqMirror: false,
+
+    playlistMode: 'simple',
+    playlistVisible: false,
 
     // ---- Scene actions ----
 
@@ -501,6 +510,14 @@ export const useCodaStore = create<CodaStore>()(
         const scene = state.scenes.find((s) => s.id === sceneId);
         if (scene) scene.effects.loopStrength = strength;
       }),
+
+    // ---- Playlist actions ----
+
+    setPlaylistMode: (mode) =>
+      set((state) => { state.playlistMode = mode; }),
+
+    setPlaylistVisible: (v) =>
+      set((state) => { state.playlistVisible = v; }),
 
     // ---- Export actions ----
 

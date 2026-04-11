@@ -5,13 +5,15 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useCodaStore } from '@/store/useCodaStore';
 
 import UploadPanel from '@/components/UI/UploadPanel';
-import AudioPlayer from '@/components/UI/AudioPlayer';
 import WhisperSyncPanel from '@/components/UI/WhisperSyncPanel';
 import SubtitleEditor from '@/components/UI/SubtitleEditor';
 import VFXPanel from '@/components/UI/VFXPanel';
 import LoopPanel from '@/components/UI/LoopPanel';
 import TitleCustomPanel from '@/components/UI/TitleCustomPanel';
 import EqualizerTab from '@/components/Equalizer/EqualizerTab';
+import CanvasSceneInfoBar from '@/components/UI/CanvasSceneInfoBar';
+import CanvasBottomBar from '@/components/UI/CanvasBottomBar';
+import PlaylistPanel from '@/components/UI/PlaylistPanel';
 
 import {
   startCompositeRender,
@@ -48,7 +50,7 @@ type TabId = 'STUDIO' | 'EQ & VFX' | 'LYRIC' | 'RENDER';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'STUDIO',   label: 'LOADER' },
-  { id: 'EQ & VFX', label: 'EQ'    },
+  { id: 'EQ & VFX', label: 'EQ&PL'  },
   { id: 'LYRIC',    label: 'LYRIC'  },
   { id: 'RENDER',   label: 'RENDER' },
 ];
@@ -91,13 +93,13 @@ function PanelSection({
 }
 
 // ---------------------------------------------------------------------------
-// STUDIO Tab — 배경 + 오디오 업로드 + 타이틀
+// STUDIO Tab — 배경 업로드 + 타이틀 (오디오는 EQ&PL Playlist 패널에서)
 // ---------------------------------------------------------------------------
 
 function StudioTab() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto divide-y divide-cream-300">
-      <UploadPanel />
+      <UploadPanel mode="background" />
       <PanelSection title="타이틀">
         <TitleCustomPanel />
       </PanelSection>
@@ -111,19 +113,11 @@ function StudioTab() {
 
 function EQTab() {
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-      {/* EQ — flex-1, scrollable */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <EqualizerTab />
-      </div>
-
-      {/* 플레이리스트 — 하단 고정 */}
-      <div className="shrink-0 border-t-2 border-cream-300">
-        <div className="flex items-center gap-2 px-3 py-2 bg-cream-200 border-b border-cream-300">
-          <span className="label-caps">Playlist</span>
-        </div>
-        <AudioPlayer />
-      </div>
+    <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+      {/* EQ */}
+      <EqualizerTab />
+      {/* Playlist — COLOR 바로 아래 */}
+      <PlaylistPanel />
     </div>
   );
 }
@@ -394,22 +388,31 @@ export default function Home() {
       {/* ── Body ───────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* LEFT: Canvas */}
-        <div className="flex-1 min-w-0 flex items-center justify-center bg-cream-200 overflow-hidden">
-          <div
-            id="studio-canvas-container"
-            className="relative bg-black"
-            style={{
-              aspectRatio: ASPECT_MAP[exportFormat],
-              maxHeight: '100%',
-              maxWidth: '100%',
-              height: exportFormat === '9:16' ? '100%' : 'auto',
-              width: exportFormat === '9:16' ? 'auto' : '100%',
-            }}
-          >
-            <MainScene />
-            <EQCanvasLayer />
+        {/* LEFT: Canvas column */}
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          {/* Scene info bar — always on top */}
+          <CanvasSceneInfoBar />
+
+          {/* Canvas area — fills remaining vertical space */}
+          <div className="flex-1 min-h-0 flex items-center justify-center bg-cream-200 overflow-hidden">
+            <div
+              id="studio-canvas-container"
+              className="relative bg-black"
+              style={{
+                aspectRatio: ASPECT_MAP[exportFormat],
+                maxHeight: '100%',
+                maxWidth: '100%',
+                height: exportFormat === '9:16' ? '100%' : 'auto',
+                width: exportFormat === '9:16' ? 'auto' : '100%',
+              }}
+            >
+              <MainScene />
+              <EQCanvasLayer />
+            </div>
           </div>
+
+          {/* Bottom bar — transport + waveform + tracks */}
+          <CanvasBottomBar />
         </div>
 
         {/* RIGHT: 4-tab panel */}
