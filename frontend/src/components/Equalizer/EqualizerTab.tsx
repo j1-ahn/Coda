@@ -6,6 +6,7 @@ import type { AudioAnalyserData } from '@/hooks/useAudioAnalyser';
 import EQCanvas, { type EQPreset } from './EQCanvas';
 import PresetGrid, { DEFAULT_PRESETS } from './PresetGrid';
 import { eqAnalyserRef } from '@/lib/eqAnalyserRef';
+import PlaylistPanel from '@/components/UI/PlaylistPanel';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -474,6 +475,9 @@ export default function EqualizerTab() {
           {eqMirror ? 'ON' : 'OFF'}
         </button>
       </div>
+
+      {/* Playlist — Color 바로 위 */}
+      <PlaylistPanel />
 
       {/* Color tint — pick then APPLY */}
       {(() => {

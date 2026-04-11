@@ -114,10 +114,7 @@ function StudioTab() {
 function EQTab() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
-      {/* EQ */}
       <EqualizerTab />
-      {/* Playlist — COLOR 바로 아래 */}
-      <PlaylistPanel />
     </div>
   );
 }
