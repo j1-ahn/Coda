@@ -178,7 +178,18 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
     <div className="flex flex-col gap-3 p-3 h-full overflow-y-auto">
       {showBackground && (
         <div>
-          <SectionLabel>배경 이미지</SectionLabel>
+          <div className="flex items-center justify-between mb-2">
+            <p className="label-caps">배경 이미지</p>
+            {bgPreview && (
+              <button
+                onClick={() => activeSceneId && updateSceneBackground(activeSceneId, { type: 'image', url: null as unknown as string, fileName: null as unknown as string })}
+                className="text-[9px] label-caps text-ink-300 hover:text-ink-900 transition-colors px-1"
+                title="배경 삭제"
+              >
+                ✕ 삭제
+              </button>
+            )}
+          </div>
           <div
             onDragOver={(e) => { e.preventDefault(); setBgDragOver(true); }}
             onDragLeave={() => setBgDragOver(false)}

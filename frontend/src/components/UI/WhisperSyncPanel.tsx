@@ -1,7 +1,7 @@
 'use client';
 
 import { useCodaStore } from '@/store/useCodaStore';
-import type { TextTrack } from '@/store/useCodaStore';
+import type { TextTrack, CodaStore } from '@/store/useCodaStore';
 
 // ---------------------------------------------------------------------------
 // SliderRow — 재사용 슬라이더
@@ -58,13 +58,21 @@ const COLOR_OPTIONS: { label: string; value: string }[] = [
   { label: 'BLACK', value: '#1a1a16' },
 ];
 
-const POSITION_OPTIONS: TextTrack['style']['position'][] = ['bottom', 'center', 'top'];
+const POSITION_OPTIONS: { label: string; value: CodaStore['lyricPosition'] }[] = [
+  { label: 'BTM',   value: 'bottom'       },
+  { label: 'CTR',   value: 'center'       },
+  { label: 'R·C',   value: 'right-center' },
+];
 
 export default function WhisperSyncPanel() {
   const audioTracks        = useCodaStore((s) => s.audioTracks);
   const activeAudioTrackId = useCodaStore((s) => s.activeAudioTrackId);
   const scenes             = useCodaStore((s) => s.scenes);
   const activeSceneId      = useCodaStore((s) => s.activeSceneId);
+  const lyricPosition      = useCodaStore((s) => s.lyricPosition);
+  const lyricSize          = useCodaStore((s) => s.lyricSize);
+  const setLyricPosition   = useCodaStore((s) => s.setLyricPosition);
+  const setLyricSize       = useCodaStore((s) => s.setLyricSize);
 
   const addTextTrack           = useCodaStore((s) => s.addTextTrack);
   const updateTextTrackSegments = useCodaStore((s) => s.updateTextTrackSegments);
@@ -168,19 +176,17 @@ export default function WhisperSyncPanel() {
         <div className="flex flex-col gap-1.5">
           <span className="text-[10px] text-ink-500">Position</span>
           <div className="flex gap-0">
-            {POSITION_OPTIONS.map((pos) => (
+            {POSITION_OPTIONS.map((opt) => (
               <button
-                key={pos}
-                onClick={() => updateStyle({ position: pos })}
-                disabled={!lyricTrack}
-                className={`flex-1 py-1.5 text-[10px] tracking-wider uppercase border rounded-none
-                  transition-colors disabled:opacity-30 disabled:cursor-not-allowed
-                  ${style.position === pos
+                key={opt.value}
+                onClick={() => setLyricPosition(opt.value)}
+                className={`flex-1 py-1.5 text-[10px] tracking-wider uppercase border rounded-none transition-colors
+                  ${lyricPosition === opt.value
                     ? 'bg-ink-900 text-cream-100 border-ink-900'
                     : 'bg-transparent text-ink-500 border-cream-300 hover:text-ink-900 hover:border-ink-500'
                   }`}
               >
-                {pos}
+                {opt.label}
               </button>
             ))}
           </div>
@@ -218,14 +224,21 @@ export default function WhisperSyncPanel() {
         {/* Size */}
         <div className="flex flex-col gap-1.5">
           <span className="text-[10px] text-ink-500">Size</span>
-          <SliderRow
-            label=""
-            value={style.fontSize > 1 ? style.fontSize / 400 : style.fontSize}
-            min={0.03}
-            max={0.14}
-            step={0.005}
-            onChange={(v) => updateStyle({ fontSize: v })}
-          />
+          <div className="flex gap-0">
+            {(['S', 'M', 'L'] as const).map((sz) => (
+              <button
+                key={sz}
+                onClick={() => setLyricSize(sz)}
+                className={`flex-1 py-1.5 text-[10px] tracking-wider border rounded-none transition-colors
+                  ${lyricSize === sz
+                    ? 'bg-ink-900 text-cream-100 border-ink-900'
+                    : 'bg-transparent text-ink-500 border-cream-300 hover:text-ink-900 hover:border-ink-500'
+                  }`}
+              >
+                {sz}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

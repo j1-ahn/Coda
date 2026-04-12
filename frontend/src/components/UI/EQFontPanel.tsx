@@ -29,69 +29,16 @@ interface PresetDef {
   preview: React.CSSProperties;
 }
 
-const FONT_PRESETS: PresetDef[] = [
+const EQ_FONT_PRESETS: PresetDef[] = [
   {
-    value: 'elegant',
-    label: 'Elegant',
-    preview: {
-      fontFamily: "'Cormorant Garamond', serif",
-      fontStyle: 'italic',
-      fontWeight: 300,
-      backgroundImage: 'linear-gradient(90deg, #a06820, #f5e6a0, #a06820)',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text',
-      color: 'transparent',
-      letterSpacing: '0.05em',
-    },
-  },
-  {
-    value: 'lofi',
-    label: 'LOFI',
-    preview: {
-      fontFamily: "'Space Grotesk', sans-serif",
-      fontWeight: 300,
-      letterSpacing: '0.18em',
-      textTransform: 'uppercase',
-      color: '#9b9588',
-    },
-  },
-  {
-    value: 'pop',
-    label: 'POP',
-    preview: {
-      fontFamily: "'Oswald', sans-serif",
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      backgroundImage: 'linear-gradient(135deg, #00e5ff, #7b2ff7, #ff3cac)',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text',
-      color: 'transparent',
-    },
-  },
-  {
-    value: 'retro3d',
-    label: 'RETRO',
-    preview: {
-      fontFamily: "'Oswald', sans-serif",
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      backgroundImage: 'linear-gradient(170deg, #ffe566, #ff6600)',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text',
-      color: 'transparent',
-    },
-  },
-  {
-    value: 'emboss',
-    label: 'METAL',
+    value: 'neon',
+    label: 'HEAT',
     preview: {
       fontFamily: "'Space Grotesk', sans-serif",
       fontWeight: 600,
       textTransform: 'uppercase',
-      backgroundImage: 'linear-gradient(170deg, #fff 0%, #aaa 50%, #e0e0e0 100%)',
+      letterSpacing: '0.05em',
+      backgroundImage: 'linear-gradient(160deg, #fff1a0, #ff5500)',
       WebkitBackgroundClip: 'text',
       WebkitTextFillColor: 'transparent',
       backgroundClip: 'text',
@@ -99,19 +46,79 @@ const FONT_PRESETS: PresetDef[] = [
     },
   },
   {
-    value: 'glitch',
-    label: 'GLITCH',
+    value: 'mono',
+    label: 'MONO',
     preview: {
       fontFamily: "'Space Grotesk', monospace",
+      fontWeight: 400,
+      textTransform: 'uppercase',
+      letterSpacing: '0.18em',
+      backgroundImage: 'linear-gradient(180deg, #00ff88, #008844)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'vapor',
+    label: 'VAPOR',
+    preview: {
+      fontFamily: "'Cormorant Garamond', serif",
+      fontStyle: 'italic',
+      fontWeight: 300,
+      letterSpacing: '0.12em',
+      backgroundImage: 'linear-gradient(135deg, #ffb3d9, #c084fc, #818cf8)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'chrome',
+    label: 'SCRIPT',
+    preview: {
+      fontFamily: "'Dancing Script', cursive",
+      fontWeight: 700,
+      letterSpacing: '0.02em',
+      backgroundImage: 'linear-gradient(160deg, #fffbe8, #d4b870)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'dark',
+    label: '한글',
+    preview: {
+      fontFamily: "'Pretendard Variable', 'Pretendard', sans-serif",
+      fontWeight: 800,
+      letterSpacing: '-0.02em',
+      backgroundImage: 'linear-gradient(160deg, #ffffff, #aaaaaa)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'ice',
+    label: 'WIRE',
+    preview: {
+      fontFamily: "'Space Grotesk', sans-serif",
       fontWeight: 700,
       textTransform: 'uppercase',
-      color: '#c8c8c8',
-      textShadow: '1.5px 0 #ff0050, -1.5px 0 #00e5ff',
+      letterSpacing: '0.10em',
+      WebkitTextStroke: '1px rgba(255,255,255,0.82)',
+      WebkitTextFillColor: 'transparent',
+      color: 'transparent',
     },
   },
 ];
 
-export default function TitleCustomPanel() {
+export default function EQFontPanel() {
   const titleText          = useCodaStore((s) => s.titleText);
   const titleMode          = useCodaStore((s) => s.titleMode);
   const titleFontPreset    = useCodaStore((s) => s.titleFontPreset);
@@ -126,9 +133,9 @@ export default function TitleCustomPanel() {
   return (
     <div className="px-3 py-2 flex flex-col gap-2">
 
-      {/* Row 1: 6 font preset buttons */}
+      {/* Row 1: 6 EQ font preset buttons */}
       <div className="flex gap-1">
-        {FONT_PRESETS.map((fp) => {
+        {EQ_FONT_PRESETS.map((fp) => {
           const active = titleFontPreset === fp.value;
           return (
             <button
@@ -151,9 +158,6 @@ export default function TitleCustomPanel() {
                   ...(active && fp.preview.color && !fp.preview.WebkitTextFillColor
                     ? { color: '#d4cfc6' }
                     : {}),
-                  ...(active && fp.preview.textShadow
-                    ? { textShadow: 'none', color: '#d4cfc6' }
-                    : {}),
                 }}
               >
                 {fp.label}
@@ -163,7 +167,7 @@ export default function TitleCustomPanel() {
         })}
       </div>
 
-      {/* Row 2: Title + Subtitle + Anim all in one line */}
+      {/* Row 2: Title + Subtitle + Anim */}
       <div className="flex items-end gap-3">
         <div className="flex flex-col gap-0.5 w-[220px] shrink-0">
           <span className="label-caps">Title</span>

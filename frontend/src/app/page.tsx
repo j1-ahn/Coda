@@ -1,8 +1,8 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
-import { useCodaStore } from '@/store/useCodaStore';
+import { useState, useRef, useEffect } from 'react';
+import { useCodaStore, hydrateFromLocalStorage, saveToLocalStorage } from '@/store/useCodaStore';
 
 import UploadPanel from '@/components/UI/UploadPanel';
 import WhisperSyncPanel from '@/components/UI/WhisperSyncPanel';
@@ -10,10 +10,16 @@ import SubtitleEditor from '@/components/UI/SubtitleEditor';
 import VFXPanel from '@/components/UI/VFXPanel';
 import LoopPanel from '@/components/UI/LoopPanel';
 import TitleCustomPanel from '@/components/UI/TitleCustomPanel';
+import EQFontPanel from '@/components/UI/EQFontPanel';
+import LyricFontPanel from '@/components/UI/LyricFontPanel';
 import EqualizerTab from '@/components/Equalizer/EqualizerTab';
 import CanvasSceneInfoBar from '@/components/UI/CanvasSceneInfoBar';
 import CanvasBottomBar from '@/components/UI/CanvasBottomBar';
+import SaveLoadPanel from '@/components/UI/SaveLoadPanel';
 import PlaylistPanel from '@/components/UI/PlaylistPanel';
+import PlaylistOverlay from '@/components/UI/PlaylistOverlay';
+import MaskDrawOverlay from '@/components/Canvas/MaskDrawOverlay';
+import TitleHTMLOverlay from '@/components/Canvas/TitleHTMLOverlay';
 
 
 const EQOverlayWidget = dynamic(
@@ -102,9 +108,6 @@ function ImageTab() {
       <PanelSection title="Loop Animation">
         <LoopPanel />
       </PanelSection>
-      <PanelSection title="타이틀">
-        <TitleCustomPanel />
-      </PanelSection>
     </div>
   );
 }
@@ -125,13 +128,69 @@ function EQTab() {
 // LYRIC Tab — 자막 관리
 // ---------------------------------------------------------------------------
 
+function ManualLyricInput() {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [applied, setApplied] = useState(false);
+
+  const { addAudioTrack, setActiveAudioTrack, setWhisperSegments, audioTracks, activeAudioTrackId } = useCodaStore();
+
+  const handleApply = () => {
+    const raw = textareaRef.current?.value ?? '';
+    const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+
+    // reuse existing manual track or create new one
+    let trackId = audioTracks.find((t) => t.fileName === '직접 입력')?.id;
+    if (!trackId) {
+      trackId = addAudioTrack('직접 입력', '');
+    }
+    setActiveAudioTrack(trackId);
+
+    const secsPerLine = 3;
+    const segments = lines.map((text, i) => ({
+      id: `manual-${i}`,
+      start: i * secsPerLine,
+      end: (i + 1) * secsPerLine,
+      text,
+    }));
+    setWhisperSegments(trackId, segments, lines.length * secsPerLine);
+    setApplied(true);
+    setTimeout(() => setApplied(false), 1500);
+  };
+
+  return (
+    <div className="flex flex-col gap-2 p-3">
+      <textarea
+        ref={textareaRef}
+        rows={6}
+        placeholder={"가사를 한 줄씩 입력하세요\n예시: 내일 시작이야\n또 다른 날이 오면"}
+        className="w-full resize-none bg-cream-100 border border-cream-300 text-ink-900 text-xs p-2 outline-none
+          placeholder:text-ink-300 focus:border-ink-500 transition-colors leading-relaxed"
+      />
+      <button
+        onClick={handleApply}
+        className={`px-3 py-1.5 label-caps border transition-colors ${
+          applied
+            ? 'bg-ink-900 text-cream-100 border-ink-900'
+            : 'border-cream-300 text-ink-500 hover:border-ink-500 hover:text-ink-900'
+        }`}
+      >
+        {applied ? '적용됨' : '적용'}
+      </button>
+    </div>
+  );
+}
+
 function LyricTab() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden divide-y divide-cream-300">
+      <PanelSection title="직접 입력">
+        <ManualLyricInput />
+      </PanelSection>
       <PanelSection title="자막 동기화">
         <WhisperSyncPanel />
       </PanelSection>
-      <PanelSection title="자막 편집" grow minHeight="160px">
+      <PanelSection title="자막 편집" grow minHeight="120px">
         <div className="h-full overflow-hidden">
           <SubtitleEditor />
         </div>
@@ -170,14 +229,22 @@ export default function Home() {
   const titleText      = useCodaStore((s) => s.titleText);
   const exportFormat   = useCodaStore((s) => s.exportFormat);
   const setExportFormat = useCodaStore((s) => s.setExportFormat);
+  const previewMode    = useCodaStore((s) => s.previewMode);
 
   const [activeTab, setActiveTab] = useState<TabId>('IMAGE');
+
+  // Hydrate from localStorage on mount, then auto-save on every change
+  useEffect(() => {
+    hydrateFromLocalStorage();
+    const unsub = useCodaStore.subscribe(() => saveToLocalStorage());
+    return unsub;
+  }, []);
 
   return (
     <main className="flex flex-col h-screen bg-cream-100 overflow-hidden text-ink-900">
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between px-5 py-2.5 border-b border-cream-300 shrink-0 bg-cream-100 z-10">
+      {/* ── Header — hidden in preview mode */}
+      <header className={`flex items-center justify-between px-5 py-2.5 border-b border-cream-300 shrink-0 bg-cream-100 z-10 ${previewMode ? 'hidden' : ''}`}>
         <div className="flex items-center gap-3">
           <span className="font-serif italic text-ink-900 text-base tracking-tight select-none">
             {titleText}
@@ -203,6 +270,7 @@ export default function Home() {
               </button>
             ))}
           </div>
+          <SaveLoadPanel />
           <SettingsButton />
         </div>
       </header>
@@ -212,8 +280,8 @@ export default function Home() {
 
         {/* LEFT: Canvas column */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          {/* Scene info bar — always on top */}
-          <CanvasSceneInfoBar />
+          {/* Scene info bar — hidden in preview mode */}
+          {!previewMode && <CanvasSceneInfoBar />}
 
           {/* Canvas area — fills remaining vertical space */}
           <div className="flex-1 min-h-0 flex items-center justify-center bg-cream-200 overflow-hidden">
@@ -230,15 +298,36 @@ export default function Home() {
             >
               <MainScene />
               <EQCanvasLayer />
+              <PlaylistOverlay />
+              <TitleHTMLOverlay />
+              {!previewMode && <EQOverlayWidget />}
+              <MaskDrawOverlay />
             </div>
           </div>
+
+          {/* Title / EQ font panel — footer 위에 고정 */}
+          {!previewMode && activeTab === 'IMAGE' && (
+            <div className="shrink-0 border-t border-cream-300 bg-cream-100">
+              <TitleCustomPanel />
+            </div>
+          )}
+          {!previewMode && activeTab === 'EQ & VFX' && (
+            <div className="shrink-0 border-t border-cream-300 bg-cream-100">
+              <EQFontPanel />
+            </div>
+          )}
+          {!previewMode && activeTab === 'LYRIC' && (
+            <div className="shrink-0 border-t border-cream-300 bg-cream-100">
+              <LyricFontPanel />
+            </div>
+          )}
 
           {/* Bottom bar — transport + waveform + tracks */}
           <CanvasBottomBar />
         </div>
 
-        {/* RIGHT: 4-tab panel */}
-        <aside className="w-[300px] shrink-0 flex flex-col border-l border-cream-300 bg-cream-100 overflow-hidden">
+        {/* RIGHT: 4-tab panel — hidden in preview mode */}
+        <aside className={`w-[300px] shrink-0 flex flex-col border-l border-cream-300 bg-cream-100 overflow-hidden transition-all ${previewMode ? 'hidden' : ''}`}>
 
           {/* Tab headers */}
           <div className="flex border-b border-cream-300 shrink-0">
@@ -267,8 +356,7 @@ export default function Home() {
         </aside>
       </div>
 
-      {/* EQ chrome — fixed, outside canvas (not captured in export) */}
-      <EQOverlayWidget />
+      {/* EQOverlayWidget moved into canvas container above */}
     </main>
   );
 }

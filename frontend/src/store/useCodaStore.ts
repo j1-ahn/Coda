@@ -37,10 +37,25 @@ export interface Scene {
   textTracks: TextTrack[];
   effects: {
     parallaxEnabled: boolean;
-    parallaxStrength: number;         // 0~1 (default 0.08)
+    parallaxStrength: number;
     maskingEnabled: boolean;
-    loopMode: 'none' | 'wind' | 'ripple';
+    loopModes: { wind: boolean; ripple: boolean; depth: boolean };
     loopStrength: number;             // 0~1
+    depthMapUrl: string | null;       // grayscale depth map (bright=near, dark=far)
+    loopMaskPoints: { x: number; y: number }[];  // normalized 0-1, screen coord
+    // NEW: per-mode detailed params
+    windDirection: number;    // 0-7 (octant index: 0=right,1=↘,2=down,3=↙,4=left,5=↖,6=up,7=↗)
+    windSpeed: number;        // 0.1-3.0, default 1.0
+    windFrequency: number;    // 1-12, default 4.0
+    windTurbulence: number;   // 0-1, default 0.0
+    rippleOriginX: number;    // 0-1, default 0.5
+    rippleOriginY: number;    // 0-1, default 0.5
+    rippleSpeed: number;      // 0.1-3.0, default 1.0
+    rippleDecay: number;      // 0.1-1.0, default 0.65
+    depthNearSpeed: number;   // 0-3.0,  default 1.5  (근거리)
+    depthMidSpeed:  number;   // 0-2.0,  default 1.0  (중거리)
+    depthFarSpeed:  number;   // 0-1.0,  default 0.25 (원거리)
+    depthHaze: number;        // 0-1, default 0.5
   };
 }
 
@@ -48,6 +63,7 @@ export interface AudioTrack {
   id: string;
   fileName: string;
   url: string | null;
+  thumbnailUrl: string | null;
   durationSec: number;
   whisperSegments: WhisperSegment[];
   linkedSceneId: string | null;   // v2: 특정 씬에 오디오 연결
@@ -65,9 +81,15 @@ export interface ExternalAsset {
 }
 
 export interface VFXParams {
-  bloom: { enabled: boolean; intensity: number; threshold: number };
+  bloom:     { enabled: boolean; intensity: number; threshold: number };
   filmGrain: { enabled: boolean; intensity: number };
-  vignette: { enabled: boolean; darkness: number };
+  vignette:  { enabled: boolean; darkness: number };
+  sparkle:   { enabled: boolean; count: number; speed: number };
+  dust:      { enabled: boolean; count: number; speed: number };
+  filmBurn:  { enabled: boolean; intensity: number };
+  chromatic: { enabled: boolean; offset: number };
+  scanline:  { enabled: boolean; density: number; opacity: number };
+  glitch:    { enabled: boolean; strength: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -97,8 +119,20 @@ export interface CodaStore {
   vfxParams: VFXParams;
 
   // 타이틀 퍼시스턴스 (3대 모드)
-  titleMode: 'hero-to-corner' | 'ambient-object' | 'breathing';
+  titleMode: 'hero-to-corner' | 'ambient-object' | 'breathing' | 'type' | 'fade' | 'rise' | 'zoom' | 'blur' | 'glide' | 'split' | 'flicker' | 'skate';
+  titlePlayMode: 'loop' | 'once' | 'stay';
   titleText: string;
+  titleFontPreset: 'elegant' | 'lofi' | 'pop' | 'retro3d' | 'emboss' | 'glitch'
+                 | 'neon' | 'mono' | 'vapor' | 'chrome' | 'dark' | 'ice';
+  titleSubtext: string;
+
+  // Lyric style
+  lyricFontPreset: 'clean' | 'mist' | 'slab' | 'glow' | 'outline' | 'kr';
+  lyricPosition: 'bottom' | 'center' | 'right-center';
+  lyricSize: 'S' | 'M' | 'L';
+
+  // Mask drawing mode
+  maskDrawingMode: boolean;
 
   // EQ
   eqPresetId: string;
@@ -158,6 +192,7 @@ export interface CodaStore {
   setAudioTrackProcessing: (id: string, status: AudioTrack['processing'], error?: string) => void;
   setWhisperSegments: (trackId: string, segments: WhisperSegment[], durationSec: number) => void;
   setActiveAudioTrack: (id: string) => void;
+  setTrackThumbnail: (id: string, url: string | null) => void;
   setPlaybackTime: (time: number) => void;
   linkAudioToScene: (trackId: string, sceneId: string | null) => void;
 
@@ -175,19 +210,38 @@ export interface CodaStore {
 
   // Title
   setTitleMode: (mode: CodaStore['titleMode']) => void;
+  setTitlePlayMode: (mode: CodaStore['titlePlayMode']) => void;
   setTitleText: (text: string) => void;
+  setTitleFontPreset: (p: CodaStore['titleFontPreset']) => void;
+  setTitleSubtext: (t: string) => void;
+
+  setLyricFontPreset: (p: CodaStore['lyricFontPreset']) => void;
+  setLyricPosition: (pos: CodaStore['lyricPosition']) => void;
+  setLyricSize: (size: CodaStore['lyricSize']) => void;
 
   // Loop animation
   setParallaxEnabled: (sceneId: string, enabled: boolean) => void;
   setParallaxStrength: (sceneId: string, strength: number) => void;
-  setLoopMode: (sceneId: string, mode: 'none' | 'wind' | 'ripple') => void;
+  toggleLoopMode: (sceneId: string, mode: 'wind' | 'ripple' | 'depth') => void;
+  setDepthMap: (sceneId: string, url: string | null) => void;
   setLoopStrength: (sceneId: string, strength: number) => void;
+  setLoopMaskPoints: (sceneId: string, points: { x: number; y: number }[]) => void;
+  setMaskDrawingMode: (v: boolean) => void;
+  setLoopParam: (sceneId: string, key: string, value: number) => void;
 
   // Playlist overlay
+  previewMode: boolean;
+  setPreviewMode: (v: boolean) => void;
+
   playlistMode: 'simple' | 'box' | 'list';
   playlistVisible: boolean;
+  playlistOverlayX: number;
+  playlistOverlayY: number;
+  playlistOverlayScale: number;
   setPlaylistMode: (mode: CodaStore['playlistMode']) => void;
   setPlaylistVisible: (v: boolean) => void;
+  setPlaylistOverlayPos: (x: number, y: number) => void;
+  setPlaylistOverlayScale: (s: number) => void;
 
   // Export
   setExportFormat: (format: CodaStore['exportFormat']) => void;
@@ -203,13 +257,39 @@ const makeDefaultScene = (order: number): Scene => ({
   background: { type: 'image', url: null, fileName: null },
   durationSec: 0,
   textTracks: [],
-  effects: { parallaxEnabled: false, parallaxStrength: 0.08, maskingEnabled: false, loopMode: 'none', loopStrength: 0.5 },
+  effects: {
+    parallaxEnabled: false,
+    parallaxStrength: 0.40,
+    maskingEnabled: false,
+    loopModes: { wind: false, ripple: false, depth: false },
+    loopStrength: 0.5,
+    depthMapUrl: null,
+    loopMaskPoints: [],
+    windDirection: 0,
+    windSpeed: 1.0,
+    windFrequency: 4.0,
+    windTurbulence: 0.0,
+    rippleOriginX: 0.5,
+    rippleOriginY: 0.5,
+    rippleSpeed: 1.0,
+    rippleDecay: 0.65,
+    depthNearSpeed: 1.5,
+    depthMidSpeed:  1.0,
+    depthFarSpeed:  0.8,
+    depthHaze: 0.5,
+  },
 });
 
 const defaultVFX: VFXParams = {
-  bloom: { enabled: true, intensity: 0.8, threshold: 0.6 },
-  filmGrain: { enabled: true, intensity: 0.15 },
-  vignette: { enabled: true, darkness: 0.5 },
+  bloom:     { enabled: true,  intensity: 0.8,  threshold: 0.6 },
+  filmGrain: { enabled: true,  intensity: 0.15 },
+  vignette:  { enabled: true,  darkness: 0.5 },
+  sparkle:   { enabled: false, count: 25,   speed: 0.3 },
+  dust:      { enabled: false, count: 30,   speed: 0.18 },
+  filmBurn:  { enabled: false, intensity: 0.5 },
+  chromatic: { enabled: false, offset: 0.003 },
+  scanline:  { enabled: false, density: 1.5, opacity: 0.15 },
+  glitch:    { enabled: false, strength: 0.3 },
 };
 
 // ---------------------------------------------------------------------------
@@ -217,6 +297,36 @@ const defaultVFX: VFXParams = {
 // ---------------------------------------------------------------------------
 
 const initialScene = makeDefaultScene(0);
+
+// ── Blob URL cleaner (used for both localStorage and backend save) ──────────
+export function sanitizeForSave(state: CodaStore): Partial<CodaStore> {
+  const isBlob = (url: string | null | undefined) =>
+    typeof url === 'string' && url.startsWith('blob:');
+  return {
+    ...state,
+    scenes: state.scenes.map((s) => ({
+      ...s,
+      background: {
+        ...s.background,
+        url: isBlob(s.background.url) ? null : s.background.url,
+      },
+      effects: {
+        ...s.effects,
+        depthMapUrl: isBlob(s.effects.depthMapUrl) ? null : s.effects.depthMapUrl,
+      },
+    })),
+    audioTracks: state.audioTracks.map((t) => ({
+      ...t,
+      url: isBlob(t.url) ? null : t.url,
+      thumbnailUrl: null,
+    })),
+    eqCustomImageUrl: isBlob(state.eqCustomImageUrl) ? null : state.eqCustomImageUrl,
+    externalAssets: state.externalAssets.map((a) => ({
+      ...a,
+      url: isBlob(a.url) ? '' : a.url,
+    })),
+  };
+}
 
 export const useCodaStore = create<CodaStore>()(
   immer((set, _get) => ({
@@ -236,7 +346,14 @@ export const useCodaStore = create<CodaStore>()(
     vfxParams: defaultVFX,
 
     titleMode: 'hero-to-corner',
+    titlePlayMode: 'loop',
     titleText: 'Coda Studio',
+    titleFontPreset: 'elegant',
+    titleSubtext: '',
+
+    lyricFontPreset: 'clean',
+    lyricPosition: 'bottom' as const,
+    lyricSize: 'M',
 
     eqPresetId: 'basic2',
     eqReactMode: 'original',
@@ -244,18 +361,25 @@ export const useCodaStore = create<CodaStore>()(
     eqOverlayVisible: false,
     eqIntensity: 0.5,
     eqSensitivity: 1.0,
-    eqOverlayX: 40,
-    eqOverlayY: 40,
-    eqOverlayW: 320,
-    eqOverlayH: 180,
+    eqOverlayX: 5,   // % of canvas width
+    eqOverlayY: 10,  // % of canvas height
+    eqOverlayW: 45,  // % of canvas width
+    eqOverlayH: 45,  // % of canvas height
     eqFlipX: false,
     eqFlipY: false,
     eqTintColor: null,
     eqOpacity: 1,
     eqMirror: false,
 
+    maskDrawingMode: false,
+
+    previewMode: false,
+
     playlistMode: 'simple',
     playlistVisible: false,
+    playlistOverlayX: 80,
+    playlistOverlayY: 85,
+    playlistOverlayScale: 1,
 
     // ---- Scene actions ----
 
@@ -356,6 +480,7 @@ export const useCodaStore = create<CodaStore>()(
           id,
           fileName,
           url,
+          thumbnailUrl: null,
           durationSec: 0,
           whisperSegments: [],
           linkedSceneId: null,
@@ -398,6 +523,12 @@ export const useCodaStore = create<CodaStore>()(
     setActiveAudioTrack: (id) =>
       set((state) => { state.activeAudioTrackId = id; }),
 
+    setTrackThumbnail: (id, url) =>
+      set((state) => {
+        const t = state.audioTracks.find((t) => t.id === id);
+        if (t) t.thumbnailUrl = url;
+      }),
+
     setPlaybackTime: (time) =>
       set((state) => { state.currentPlaybackTime = time; }),
 
@@ -438,18 +569,36 @@ export const useCodaStore = create<CodaStore>()(
 
     updateVFX: (updates) =>
       set((state) => {
-        if (updates.bloom) Object.assign(state.vfxParams.bloom, updates.bloom);
-        if (updates.filmGrain) Object.assign(state.vfxParams.filmGrain, updates.filmGrain);
-        if (updates.vignette) Object.assign(state.vfxParams.vignette, updates.vignette);
+        for (const [key, val] of Object.entries(updates)) {
+          const k = key as keyof VFXParams;
+          if (state.vfxParams[k] && val) {
+            Object.assign(state.vfxParams[k] as object, val);
+          }
+        }
       }),
 
     // ---- Title actions ----
 
     setTitleMode: (mode) =>
       set((state) => { state.titleMode = mode; }),
+    setTitlePlayMode: (mode) =>
+      set((state) => { state.titlePlayMode = mode; }),
 
     setTitleText: (text) =>
       set((state) => { state.titleText = text; }),
+
+    setTitleFontPreset: (p) =>
+      set((state) => { state.titleFontPreset = p; }),
+
+    setTitleSubtext: (t) =>
+      set((state) => { state.titleSubtext = t; }),
+
+    setLyricFontPreset: (p) =>
+      set((state) => { state.lyricFontPreset = p; }),
+    setLyricPosition: (pos) =>
+      set((state) => { state.lyricPosition = pos; }),
+    setLyricSize: (size) =>
+      set((state) => { state.lyricSize = size; }),
 
     // ---- TextSegment actions (on AudioTrack.whisperSegments) ----
 
@@ -499,10 +648,16 @@ export const useCodaStore = create<CodaStore>()(
 
     // ---- Loop animation actions ----
 
-    setLoopMode: (sceneId, mode) =>
+    toggleLoopMode: (sceneId, mode) =>
       set((state) => {
         const scene = state.scenes.find((s) => s.id === sceneId);
-        if (scene) scene.effects.loopMode = mode;
+        if (scene) scene.effects.loopModes[mode] = !scene.effects.loopModes[mode];
+      }),
+
+    setDepthMap: (sceneId, url) =>
+      set((state) => {
+        const scene = state.scenes.find((s) => s.id === sceneId);
+        if (scene) scene.effects.depthMapUrl = url;
       }),
 
     setLoopStrength: (sceneId, strength) =>
@@ -511,13 +666,37 @@ export const useCodaStore = create<CodaStore>()(
         if (scene) scene.effects.loopStrength = strength;
       }),
 
+    setLoopMaskPoints: (sceneId, points) =>
+      set((state) => {
+        const scene = state.scenes.find((s) => s.id === sceneId);
+        if (scene) scene.effects.loopMaskPoints = points;
+      }),
+
+    setMaskDrawingMode: (v) =>
+      set((state) => { state.maskDrawingMode = v; }),
+
+    setLoopParam: (sceneId, key, value) =>
+      set((state) => {
+        const scene = state.scenes.find((s) => s.id === sceneId);
+        if (scene) (scene.effects as Record<string, unknown>)[key] = value;
+      }),
+
     // ---- Playlist actions ----
+
+    setPreviewMode: (v) =>
+      set((state) => { state.previewMode = v; }),
 
     setPlaylistMode: (mode) =>
       set((state) => { state.playlistMode = mode; }),
 
     setPlaylistVisible: (v) =>
       set((state) => { state.playlistVisible = v; }),
+
+    setPlaylistOverlayPos: (x, y) =>
+      set((state) => { state.playlistOverlayX = x; state.playlistOverlayY = y; }),
+
+    setPlaylistOverlayScale: (s) =>
+      set((state) => { state.playlistOverlayScale = s; }),
 
     // ---- Export actions ----
 
@@ -563,3 +742,25 @@ export const useCodaStore = create<CodaStore>()(
       set((state) => { state.eqMirror = v; }),
   }))
 );
+
+// ── localStorage auto-persistence ────────────────────────────────────────────
+const LS_KEY = 'coda-studio-v1';
+
+export function hydrateFromLocalStorage() {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    useCodaStore.setState(saved);
+  } catch {
+    // corrupted data — ignore
+  }
+}
+
+export function saveToLocalStorage() {
+  if (typeof window === 'undefined') return;
+  const state = useCodaStore.getState();
+  const clean = sanitizeForSave(state);
+  localStorage.setItem(LS_KEY, JSON.stringify(clean));
+}
