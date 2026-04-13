@@ -115,7 +115,7 @@ export default function LoopPanel() {
       const blob = await res.blob();
       const form = new FormData();
       form.append('file', blob, 'image.png');
-      const resp = await fetch('http://localhost:8000/api/depth/estimate', {
+      const resp = await fetch('/api/depth/estimate', {
         method: 'POST',
         body: form,
       });

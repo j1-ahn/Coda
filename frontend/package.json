@@ -7,19 +7,20 @@
     "start": "next start"
   },
   "dependencies": {
+    "@react-three/drei": "^9.105.4",
+    "@react-three/fiber": "^8.16.8",
+    "@react-three/postprocessing": "^2.16.2",
+    "autoprefixer": "^10.4.19",
+    "immer": "^10.1.1",
+    "music-metadata-browser": "^2.5.11",
+    "nanoid": "^5.0.7",
     "next": "14.2.3",
+    "postcss": "^8.4.38",
     "react": "^18",
     "react-dom": "^18",
-    "zustand": "^4.5.2",
-    "immer": "^10.1.1",
-    "nanoid": "^5.0.7",
-    "@react-three/fiber": "^8.16.8",
-    "@react-three/drei": "^9.105.4",
-    "@react-three/postprocessing": "^2.16.2",
-    "three": "^0.164.1",
     "tailwindcss": "^3.4.3",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38"
+    "three": "^0.164.1",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@types/node": "^20",

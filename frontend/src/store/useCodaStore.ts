@@ -130,6 +130,7 @@ export interface CodaStore {
   lyricFontPreset: 'clean' | 'mist' | 'slab' | 'glow' | 'outline' | 'kr';
   lyricPosition: 'bottom' | 'center' | 'right-center';
   lyricSize: 'S' | 'M' | 'L';
+  lyricColorStyle: 'white' | 'black' | 'outline-black' | 'box';
 
   // Mask drawing mode
   maskDrawingMode: boolean;
@@ -218,6 +219,7 @@ export interface CodaStore {
   setLyricFontPreset: (p: CodaStore['lyricFontPreset']) => void;
   setLyricPosition: (pos: CodaStore['lyricPosition']) => void;
   setLyricSize: (size: CodaStore['lyricSize']) => void;
+  setLyricColorStyle: (style: CodaStore['lyricColorStyle']) => void;
 
   // Loop animation
   setParallaxEnabled: (sceneId: string, enabled: boolean) => void;
@@ -354,6 +356,7 @@ export const useCodaStore = create<CodaStore>()(
     lyricFontPreset: 'clean',
     lyricPosition: 'bottom' as const,
     lyricSize: 'M',
+    lyricColorStyle: 'white' as const,
 
     eqPresetId: 'basic2',
     eqReactMode: 'original',
@@ -599,6 +602,8 @@ export const useCodaStore = create<CodaStore>()(
       set((state) => { state.lyricPosition = pos; }),
     setLyricSize: (size) =>
       set((state) => { state.lyricSize = size; }),
+    setLyricColorStyle: (style) =>
+      set((state) => { state.lyricColorStyle = style; }),
 
     // ---- TextSegment actions (on AudioTrack.whisperSegments) ----
 
@@ -752,6 +757,21 @@ export function hydrateFromLocalStorage() {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
+
+    // blob URL이 null로 소거된 트랙(죽은 파일)은 로드 시 자동 탈락
+    if (Array.isArray(saved.audioTracks)) {
+      saved.audioTracks = saved.audioTracks.filter(
+        (t: { url: string | null }) => t.url !== null
+      );
+      // 활성 트랙이 제거된 경우 첫 번째 트랙으로 재설정
+      if (
+        saved.activeAudioTrackId !== null &&
+        !saved.audioTracks.some((t: { id: string }) => t.id === saved.activeAudioTrackId)
+      ) {
+        saved.activeAudioTrackId = saved.audioTracks[0]?.id ?? null;
+      }
+    }
+
     useCodaStore.setState(saved);
   } catch {
     // corrupted data — ignore

@@ -38,31 +38,38 @@ export default function EQOverlayWidget() {
     const onMove = (e: MouseEvent) => {
       const cr = getContainerRect();
       if (!cr) return;
+      const cw = cr.width, ch = cr.height;
 
       if (dragging.current) {
-        const nx = dragStart.current.ox + e.clientX - dragStart.current.mx;
-        const ny = dragStart.current.oy + e.clientY - dragStart.current.my;
-        setEqOverlayGeometry(Math.max(0, nx), Math.max(0, ny), ow, oh);
+        const dx = (e.clientX - dragStart.current.mx) / cw * 100;
+        const dy = (e.clientY - dragStart.current.my) / ch * 100;
+        const nx = Math.max(0, Math.min(dragStart.current.ox + dx, 100 - ow));
+        const ny = Math.max(0, Math.min(dragStart.current.oy + dy, 100 - oh));
+        setEqOverlayGeometry(nx, ny, ow, oh);
       }
       if (resizeEdge.current === 'bottom') {
-        const delta = e.clientY - resizeStart.current.my;
-        setEqOverlayGeometry(ox, oy, ow, Math.max(60, resizeStart.current.oh + delta));
+        const dh = (e.clientY - resizeStart.current.my) / ch * 100;
+        const newH = Math.max(5, resizeStart.current.oh + dh);
+        // 하단이 컨테이너 밖으로 나가지 않도록 클램핑
+        setEqOverlayGeometry(ox, oy, ow, Math.min(newH, 100 - oy));
       }
       if (resizeEdge.current === 'top') {
-        const delta = e.clientY - resizeStart.current.my;
-        const nh = Math.max(60, resizeStart.current.oh - delta);
-        const ny = resizeStart.current.oy + delta;
-        setEqOverlayGeometry(ox, Math.max(0, ny), ow, nh);
+        const dh = (e.clientY - resizeStart.current.my) / ch * 100;
+        const nh = Math.max(5, resizeStart.current.oh - dh);
+        const ny = Math.max(0, resizeStart.current.oy + dh);
+        setEqOverlayGeometry(ox, ny, ow, nh);
       }
       if (resizeEdge.current === 'right') {
-        const delta = e.clientX - resizeStart.current.mx;
-        setEqOverlayGeometry(ox, oy, Math.max(120, resizeStart.current.ow + delta), oh);
+        const dw = (e.clientX - resizeStart.current.mx) / cw * 100;
+        const newW = Math.max(10, resizeStart.current.ow + dw);
+        // 우측이 컨테이너 밖으로 나가지 않도록 클램핑
+        setEqOverlayGeometry(ox, oy, Math.min(newW, 100 - ox), oh);
       }
       if (resizeEdge.current === 'left') {
-        const delta = e.clientX - resizeStart.current.mx;
-        const nw = Math.max(120, resizeStart.current.ow - delta);
-        const nx = resizeStart.current.ox + delta;
-        setEqOverlayGeometry(Math.max(0, nx), oy, nw, oh);
+        const dw = (e.clientX - resizeStart.current.mx) / cw * 100;
+        const nw = Math.max(10, resizeStart.current.ow - dw);
+        const nx = Math.max(0, resizeStart.current.ox + dw);
+        setEqOverlayGeometry(nx, oy, nw, oh);
       }
     };
     const onUp = () => { dragging.current = false; resizeEdge.current = null; };
@@ -73,16 +80,14 @@ export default function EQOverlayWidget() {
 
   if (!visible) return null;
 
-  const cr = typeof window !== 'undefined' ? getContainerRect() : null;
-  if (!cr) return null;
-
-  const left = cr.left + ox;
-  const top  = cr.top  + oy;
+  // 컨테이너 밖으로 삐져나오지 않도록 렌더 시 클램핑
+  const safeOx = Math.max(0, Math.min(ox, 100 - ow));
+  const safeOy = Math.max(0, Math.min(oy, 100 - oh));
 
   return (
     <div
-      className="fixed z-50 select-none pointer-events-none"
-      style={{ left, top, width: ow }}
+      className="absolute z-50 select-none pointer-events-none"
+      style={{ left: `${safeOx}%`, top: `${safeOy}%`, width: `${ow}%`, height: `${oh}%` }}
     >
       {/* Top resize handle */}
       <div
@@ -113,8 +118,6 @@ export default function EQOverlayWidget() {
           className="flex items-center gap-1 px-2 h-5 bg-black/70 backdrop-blur-sm cursor-grab active:cursor-grabbing flex-1"
           onMouseDown={(e) => {
             e.preventDefault();
-            const cr2 = getContainerRect();
-            if (!cr2) return;
             dragging.current = true;
             dragStart.current = { mx: e.clientX, my: e.clientY, ox, oy };
           }}
@@ -155,7 +158,7 @@ export default function EQOverlayWidget() {
       {/* Canvas area outline (visual only — actual canvas is EQCanvasLayer) */}
       <div
         className="flex pointer-events-auto"
-        style={{ height: oh }}
+        style={{ height: `${oh}%` }}
       >
         {/* Left resize handle */}
         <div

@@ -41,6 +41,11 @@ interface DrawState {
   rmFlash?: number;
   rmRipples?: { r: number; alpha: number }[];
   rmPrevBass?: number;
+  // Smoothed bar heights for BASIC3
+  barSmooth?: Float32Array;
+  // Peak hold for BASIC3
+  peakH?: Float32Array;
+  peakDecay?: Float32Array;
 }
 
 interface Particle {
@@ -69,6 +74,26 @@ function hexRgb(hex: string): [number, number, number] {
     parseInt(hex.slice(3, 5), 16),
     parseInt(hex.slice(5, 7), 16),
   ];
+}
+
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, Math.round(l * 100)];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === rn)      h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6;
+  else if (max === gn) h = ((bn - rn) / d + 2) / 6;
+  else                 h = ((rn - gn) / d + 4) / 6;
+  return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+}
+
+// Logarithmic frequency bin mapping — bass gets more bars perceptually
+function logBin(i: number, count: number, maxBin: number): number {
+  const minBin = 1;
+  return Math.min(maxBin - 1, Math.floor(minBin * Math.pow(maxBin / minBin, i / Math.max(1, count - 1))));
 }
 
 // ---------------------------------------------------------------------------
@@ -367,35 +392,52 @@ const drawMagenta: DrawFn = (ctx, w, h, data, time, _s, preset) => {
 // ETHER — soft cloud shape (이퀄7 레퍼런스)
 // Light bg, organic blob morphs with mids, "SISSY SCREENS" aesthetic
 // ---------------------------------------------------------------------------
-const drawEther: DrawFn = (ctx, w, h, data, time, state, preset) => {
-  if (!state.blobAngles) {
-    state.blobAngles = Array.from({ length: 12 }, (_, i) => (i / 12) * Math.PI * 2);
-  }
-
+const drawEther: DrawFn = (ctx, w, h, data, time, _state, preset) => {
   ctx.clearRect(0, 0, w, h);
 
   const [tr, tg, tb] = hexRgb(preset.colorTint);
+  const [tintH, tintS] = rgbToHsl(tr, tg, tb);
+  const ts = Math.max(55, tintS);
   const cx = w / 2, cy = h / 2;
-  const baseR = Math.min(w, h) * 0.3;
-  const { frequencyData, midLevel, overallLevel } = data;
+  const baseR = Math.min(w, h) * 0.36;
+  const { frequencyData, bassLevel, midLevel, overallLevel } = data;
 
+  const PETALS   = 8;           // number of petals
+  const TOTAL    = PETALS * 2;  // alternating tip / valley points
+  const maxBinE  = Math.floor(frequencyData.length * 0.60);
+
+  // Build petal tip radii from frequency data
+  const tipR: number[] = [];
+  for (let p = 0; p < PETALS; p++) {
+    const bin = logBin(Math.round((p / PETALS) * (maxBinE - 1)), maxBinE, maxBinE);
+    const v   = frequencyData[bin] / 255;
+    // organic sway per petal
+    const sway = Math.sin(time * 0.7 + p * 1.3) * 0.07;
+    tipR.push(baseR * (0.70 + v * 1.10 + sway + overallLevel * 0.18));
+  }
+  const valleyR = baseR * (0.28 + bassLevel * 0.12);
+
+  // Compute 2*PETALS points: alternating tip (petal end) / valley (between petals)
   const pts: { x: number; y: number }[] = [];
-  for (let i = 0; i < 12; i++) {
-    const angle = state.blobAngles![i];
-    const bin   = Math.floor((i / 12) * frequencyData.length * 0.45);
-    const amod  = (frequencyData[bin] / 255) * midLevel * 0.55;
-    const tmod  = Math.sin(time * 0.55 + angle * 1.6) * 0.09;
-    const r     = baseR * (0.82 + amod + tmod);
+  const rotOffset = time * 0.12; // slow rotation
+  for (let i = 0; i < TOTAL; i++) {
+    const angle = (i / TOTAL) * Math.PI * 2 - Math.PI / 2 + rotOffset;
+    const r     = i % 2 === 0 ? tipR[i >> 1] : valleyR;
     pts.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
   }
 
-  for (let layer = 4; layer >= 0; layer--) {
-    const scale = 1 - layer * 0.13;
-    const alpha = (0.07 + midLevel * 0.10) * (1 - layer * 0.18);
-    const lr = Math.min(255, tr + layer * 8);
-    const lg = Math.min(255, tg + layer * 8);
-    const lb = Math.min(255, tb + layer * 8);
-    ctx.fillStyle = `rgba(${lr},${lg},${lb},${alpha})`;
+  // Draw multiple glow layers (outermost first)
+  const LAYERS = 6;
+  for (let layer = LAYERS - 1; layer >= 0; layer--) {
+    const t     = layer / (LAYERS - 1);              // 0=innermost
+    const scale = 0.55 + t * 0.45;
+    const alpha = (0.06 + midLevel * 0.14) * (1 - t * 0.55);
+    const hue   = tintH + t * 30;
+    const light = 52 + t * 18;
+
+    ctx.save();
+    ctx.filter = `blur(${(LAYERS - 1 - layer) * 3.5}px)`;
+    ctx.fillStyle = `hsla(${hue},${ts}%,${light}%,${alpha})`;
     ctx.beginPath();
     const n = pts.length;
     for (let i = 0; i < n; i++) {
@@ -409,8 +451,17 @@ const drawEther: DrawFn = (ctx, w, h, data, time, state, preset) => {
     }
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
   }
 
+  // Sharp inner core
+  const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseR * 0.22 + bassLevel * baseR * 0.14);
+  cg.addColorStop(0, `hsla(${tintH},${ts}%,82%,${0.55 + bassLevel * 0.45})`);
+  cg.addColorStop(1, `hsla(${tintH},${ts}%,60%,0)`);
+  ctx.fillStyle = cg;
+  ctx.beginPath();
+  ctx.arc(cx, cy, baseR * 0.22 + bassLevel * baseR * 0.14, 0, Math.PI * 2);
+  ctx.fill();
 };
 
 // ---------------------------------------------------------------------------
@@ -684,36 +735,37 @@ const drawBloom: DrawFn = (ctx, w, h, data, time, _s, preset) => {
 // ---------------------------------------------------------------------------
 const drawHorizon: DrawFn = (ctx, w, h, data, time, _s, preset) => {
   const { overallLevel, bassLevel, midLevel, trebleLevel } = data;
-  // Shift hue base using colorTint
-  const [tr, tg, tb] = hexRgb(preset.colorTint);
-  const hueShift = Math.round((tr / 255) * 40 - (tb / 255) * 40); // tint biases the palette
-  void tg;
 
-  // Pure gradient spread — audio levels shift the entire palette
-  const h1 = 200 + hueShift + midLevel * 60  + bassLevel * 30;
-  const h2 = 280 + hueShift + bassLevel * 40 - trebleLevel * 20;
-  const h3 = 20  + hueShift + overallLevel * 40 - midLevel * 15;
-  const h4 = 350 + hueShift + bassLevel * 25 + trebleLevel * 20;
+  // Use tint color's hue as the palette base — fully color-reactive
+  const [tr, tg, tb] = hexRgb(preset.colorTint);
+  const [tintH, tintS] = rgbToHsl(tr, tg, tb);
+  const ts = Math.max(30, tintS); // ensure minimum saturation so gradient is visible
+
+  // Four gradient hues anchored to tint, offset by musical intervals
+  const h1 = tintH          + midLevel * 25  + bassLevel * 15;
+  const h2 = tintH + 80     + bassLevel * 30 - trebleLevel * 15;
+  const h3 = tintH + 160    + overallLevel * 25 - midLevel * 10;
+  const h4 = tintH - 60     + bassLevel * 20 + trebleLevel * 15;
 
   const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0,    `hsl(${h1},${40 + midLevel * 28}%,${12 + midLevel * 12}%)`);
-  bg.addColorStop(0.30, `hsl(${h2},${35 + bassLevel * 25}%,${18 + bassLevel * 14}%)`);
-  bg.addColorStop(0.60, `hsl(${h3},${55 + overallLevel * 32}%,${28 + overallLevel * 16}%)`);
-  bg.addColorStop(0.82, `hsl(${h4},${58 + bassLevel * 28}%,${22 + bassLevel * 14}%)`);
-  bg.addColorStop(1,    `hsl(${h1 + 160},${38 + trebleLevel * 20}%,${10 + trebleLevel * 8}%)`);
+  bg.addColorStop(0,    `hsl(${h1},${ts + midLevel * 20}%,${10 + midLevel * 12}%)`);
+  bg.addColorStop(0.30, `hsl(${h2},${ts + bassLevel * 20}%,${15 + bassLevel * 14}%)`);
+  bg.addColorStop(0.60, `hsl(${h3},${ts + overallLevel * 25}%,${24 + overallLevel * 16}%)`);
+  bg.addColorStop(0.82, `hsl(${h4},${ts + bassLevel * 22}%,${18 + bassLevel * 14}%)`);
+  bg.addColorStop(1,    `hsl(${h1 + 160},${ts * 0.8 + trebleLevel * 15}%,${8 + trebleLevel * 8}%)`);
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
 
-  // Diagonal gradient that drifts with time
+  // Drifting radial light sources anchored to tint hue
   const diagX = w * (0.35 + Math.sin(time * 0.08) * 0.22);
   const diagY = h * (0.45 + Math.cos(time * 0.06) * 0.18);
   for (let i = 3; i >= 0; i--) {
     const r = Math.max(w, h) * (0.3 + i * 0.22 + overallLevel * 0.35);
     const a = (0.10 - i * 0.022) * (0.5 + bassLevel * 1.4 + midLevel * 0.6);
     const rg = ctx.createRadialGradient(diagX, diagY, 0, diagX, diagY, r);
-    rg.addColorStop(0,   `hsla(${h3},80%,65%,${a * 3.5})`);
-    rg.addColorStop(0.4, `hsla(${h4},65%,55%,${a * 1.5})`);
-    rg.addColorStop(1,   `hsla(${h2},50%,40%,0)`);
+    rg.addColorStop(0,   `hsla(${h3},${ts + 20}%,65%,${a * 3.5})`);
+    rg.addColorStop(0.4, `hsla(${h4},${ts + 10}%,55%,${a * 1.5})`);
+    rg.addColorStop(1,   `hsla(${h2},${ts}%,40%,0)`);
     ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(diagX, diagY, r, 0, Math.PI * 2); ctx.fill();
   }
 
@@ -722,45 +774,78 @@ const drawHorizon: DrawFn = (ctx, w, h, data, time, _s, preset) => {
   const ly2 = h * (0.55 + Math.cos(time * 0.07 + 1) * 0.15);
   const r2  = Math.max(w, h) * (0.25 + trebleLevel * 0.3);
   const rg2 = ctx.createRadialGradient(lx2, ly2, 0, lx2, ly2, r2);
-  rg2.addColorStop(0,   `hsla(${h4 + 30},75%,68%,${0.18 + trebleLevel * 0.22})`);
-  rg2.addColorStop(0.5, `hsla(${h2},60%,50%,${0.06 + midLevel * 0.10})`);
-  rg2.addColorStop(1,   `hsla(${h1},40%,35%,0)`);
+  rg2.addColorStop(0,   `hsla(${h4 + 30},${ts + 15}%,68%,${0.18 + trebleLevel * 0.22})`);
+  rg2.addColorStop(0.5, `hsla(${h2},${ts}%,50%,${0.06 + midLevel * 0.10})`);
+  rg2.addColorStop(1,   `hsla(${h1},${ts * 0.7}%,35%,0)`);
   ctx.fillStyle = rg2; ctx.beginPath(); ctx.arc(lx2, ly2, r2, 0, Math.PI * 2); ctx.fill();
 };
 
 // ---------------------------------------------------------------------------
-// SINGULARITY — Jon Hopkins music player (이미지이퀄8 레퍼런스)
-// Dark slate, waveform, spectrum bars, queue panel
+// AURORA — rainbow spectrum ring with audio-reactive fan lines radiating outward
+// Full hue rotation around ring; lines wave with frequency data; no background
 // ---------------------------------------------------------------------------
-const drawSingularity: DrawFn = (ctx, w, h, data, _t, _s, preset) => {
+const drawAurora: DrawFn = (ctx, w, h, data, time, _s, _preset) => {
   ctx.clearRect(0, 0, w, h);
 
-  const [tr, tg, tb] = hexRgb(preset.colorTint);
-  const { frequencyData, bassLevel, overallLevel } = data;
+  const { frequencyData, overallLevel, bassLevel, midLevel } = data;
+  const cx      = w * 0.50;
+  const cy      = h * 0.50;
+  const baseR   = Math.min(w, h) * 0.28;
+  const maxBinA = Math.floor(frequencyData.length * 0.80);
+  const spokes  = 120;
+  const fans    = 6; // lines per spoke
 
-  const barCount = 64;
-  const barW     = (w * 0.92) / barCount;
-  const barX0    = w * 0.04;
-  const maxBarH  = h * 0.82;
+  for (let s = 0; s < spokes; s++) {
+    const angle = (s / spokes) * Math.PI * 2 - Math.PI / 2;
+    const hue   = (s / spokes) * 360;
+    const bin   = logBin(Math.round((s / spokes) * (maxBinA - 1)), maxBinA, maxBinA);
+    const v     = frequencyData[bin] / 255;
+    const ext   = baseR * (0.25 + v * 0.90 * (0.4 + overallLevel * 0.85) + bassLevel * 0.15);
 
-  for (let i = 0; i < barCount; i++) {
-    const bin   = Math.floor((i / barCount) * frequencyData.length * 0.85);
-    const val   = frequencyData[bin] / 255;
-    const bH    = val * maxBarH * (0.35 + bassLevel * 1.0 + overallLevel * 0.5);
-    const t     = i / (barCount - 1);
-    const alpha = 0.38 + val * 0.62;
-    const cr    = Math.min(255, Math.round(tr * (0.6 + t * 0.5)));
-    const cg    = Math.min(255, Math.round(tg * (0.6 + t * 0.5)));
-    const cbv   = Math.min(255, Math.round(tb * (0.7 + t * 0.4)));
-    const grad  = ctx.createLinearGradient(0, h - bH, 0, h);
-    grad.addColorStop(0,   `rgba(${Math.min(255,cr+40)},${Math.min(255,cg+40)},${Math.min(255,cbv+40)},${alpha})`);
-    grad.addColorStop(1,   `rgba(${cr},${cg},${cbv},${alpha * 0.5})`);
-    ctx.fillStyle = grad;
-    ctx.fillRect(barX0 + i * barW + barW * 0.1, h - bH, barW * 0.8, bH);
-    if (bH > 2) {
-      ctx.fillStyle = `rgba(${Math.min(255,cr+80)},${Math.min(255,cg+80)},${Math.min(255,cbv+80)},${0.7 + val * 0.3})`;
-      ctx.fillRect(barX0 + i * barW + barW * 0.1, h - bH - 2, barW * 0.8, 2);
+    for (let fl = 0; fl < fans; fl++) {
+      const flt     = fl / (fans - 1);
+      const lineExt = ext * (0.2 + flt * 0.8);
+      const waveAmp = lineExt * 0.14 * (1 + midLevel * 0.6);
+      const alpha   = (0.20 + v * 0.55) * (1 - flt * 0.45);
+
+      ctx.save();
+      ctx.strokeStyle = `hsla(${hue},90%,${55 + v * 25}%,${alpha})`;
+      ctx.lineWidth   = 0.7;
+      if (fl === 0) { ctx.shadowBlur = 3 + v * 10; ctx.shadowColor = `hsla(${hue},100%,70%,0.9)`; }
+
+      const pts = 7;
+      ctx.beginPath();
+      for (let p = 0; p <= pts; p++) {
+        const pt   = p / pts;
+        const r    = baseR + lineExt * pt;
+        const wv   = Math.sin(pt * Math.PI * 3 + time * 1.1 + s * 0.06 + fl * 0.35) * waveAmp * pt;
+        const perp = angle + Math.PI / 2;
+        const x    = cx + Math.cos(angle) * r + Math.cos(perp) * wv;
+        const y    = cy + Math.sin(angle) * r + Math.sin(perp) * wv;
+        p === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
     }
+  }
+
+  // Main ring — spectrum segments with audio-reactive glow
+  const segs = 120;
+  for (let i = 0; i < segs; i++) {
+    const a1  = (i / segs) * Math.PI * 2 - Math.PI / 2;
+    const a2  = ((i + 1) / segs) * Math.PI * 2 - Math.PI / 2;
+    const hue = (i / segs) * 360;
+    const bin = logBin(Math.round((i / segs) * (maxBinA - 1)), maxBinA, maxBinA);
+    const v   = frequencyData[bin] / 255;
+    ctx.save();
+    ctx.strokeStyle = `hsl(${hue},100%,${65 + v * 20}%)`;
+    ctx.lineWidth   = 2.0 + v * 1.5;
+    ctx.shadowBlur  = 6 + v * 14;
+    ctx.shadowColor = `hsl(${hue},100%,70%)`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, baseR, a1, a2);
+    ctx.stroke();
+    ctx.restore();
   }
 };
 
@@ -773,7 +858,9 @@ const drawBasic1: DrawFn = (ctx, w, h, data, _time, _s, preset) => {
 
   const { frequencyData, overallLevel, bassLevel } = data;
   const [tr, tg, tb] = hexRgb(preset.colorTint);
-  const cy = h / 2;
+  const cy     = h / 2;
+  const drawW1 = w * 0.80;
+  const maxBin1 = Math.floor(frequencyData.length * 0.70);
 
   const offsets = [0, -h * 0.018, h * 0.018];
   offsets.forEach((offset, ti) => {
@@ -781,8 +868,8 @@ const drawBasic1: DrawFn = (ctx, w, h, data, _time, _s, preset) => {
     ctx.strokeStyle = `rgba(${tr},${tg},${tb},${alpha})`;
     ctx.lineWidth   = 0.9 + ti * 0.2;
     ctx.beginPath();
-    for (let i = 0; i < w; i++) {
-      const bin = Math.floor((i / w) * frequencyData.length);
+    for (let i = 0; i < drawW1; i++) {
+      const bin = logBin(Math.round((i / drawW1) * (maxBin1 - 1)), maxBin1, maxBin1);
       const v   = (frequencyData[bin] / 255) * 2 - 1;
       const amp = h * (0.22 + overallLevel * 0.18 + bassLevel * 0.1);
       const y   = cy + offset + v * amp;
@@ -791,88 +878,165 @@ const drawBasic1: DrawFn = (ctx, w, h, data, _time, _s, preset) => {
     ctx.stroke();
   });
 
-  // Center baseline
+  // Center baseline (only over visible area)
   ctx.strokeStyle = `rgba(${tr},${tg},${tb},0.2)`;
   ctx.lineWidth = 0.5;
-  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(drawW1, cy); ctx.stroke();
 };
 
 // ---------------------------------------------------------------------------
-// BASIC2 — gradient blob waveform (eq1 reference)
-// Dark bg, layered semi-transparent filled waves, purple→pink gradient
+// BASIC2 — dual-line waveform with slightly different color tones + phase offsets
+// Two stroked lines + fill underneath; each line has its own hue shift and lag
 // ---------------------------------------------------------------------------
 const drawBasic2: DrawFn = (ctx, w, h, data, time, _s, preset) => {
   ctx.clearRect(0, 0, w, h);
 
   const { frequencyData, overallLevel, bassLevel, midLevel } = data;
   const [tr, tg, tb] = hexRgb(preset.colorTint);
-  const baseY = h * 0.62;
+  const maxBin  = Math.floor(frequencyData.length * 0.70); // ~15kHz ceiling
+  const drawW   = w * 0.80; // only draw left 80%; right 20% stays silent/empty
+  const baseY   = h * 0.62;
+  const maxAmp  = h * 0.42;
 
-  // Derive 3 tonal variants from the tint color
-  const layers = [
-    { amp: 0.38, speed: 0.55, phase: 0,   colA: [Math.round(tr*0.6), Math.round(tg*0.6), Math.round(tb*0.9)], colB: [Math.min(255,tr+30), tg, Math.min(255,tb+30)] },
-    { amp: 0.28, speed: 0.80, phase: 1.2, colA: [Math.round(tr*0.75), Math.round(tg*0.55), Math.min(255,tb+10)], colB: [Math.min(255,tr+50), Math.round(tg*0.85), Math.round(tb*0.85)] },
-    { amp: 0.20, speed: 1.15, phase: 2.6, colA: [Math.min(255,tr+20), Math.round(tg*0.7), Math.min(255,tb+20)], colB: [Math.min(255,tr+80), Math.min(255,tg+40), Math.round(tb*0.75)] },
+  // Simple linear compensation over the visible 80% range
+  const ampAt = (x: number, v: number, ampMult: number) => {
+    const xr   = x / drawW; // 0=left/bass, 1=right edge of visible area
+    const comp = 0.52 + xr * 0.80; // 0.52 at bass, 1.32 at visible right edge
+    return v * maxAmp * ampMult * comp * (0.48 + overallLevel * 0.72);
+  };
+
+  const lines = [
+    { phaseOffset: 0,    speedMult: 1.0,  ampMult: 1.0,
+      r: tr, g: tg, b: tb, alpha: 0.85, lineW: 1.5 },
+    { phaseOffset: 0.18, speedMult: 0.88, ampMult: 0.82,
+      r: Math.min(255, Math.round(tr * 1.08 + 18)),
+      g: Math.round(tg * 0.82),
+      b: Math.round(tb * 0.72),
+      alpha: 0.60, lineW: 1.2 },
   ];
 
-  layers.forEach((layer, li) => {
-    const gradient = ctx.createLinearGradient(0, 0, w, 0);
-    gradient.addColorStop(0,   `rgba(${layer.colA[0]},${layer.colA[1]},${layer.colA[2]},0.65)`);
-    gradient.addColorStop(0.5, `rgba(${Math.round((layer.colA[0]+layer.colB[0])/2)},${Math.round((layer.colA[1]+layer.colB[1])/2)},${Math.round((layer.colA[2]+layer.colB[2])/2)},0.55)`);
-    gradient.addColorStop(1,   `rgba(${layer.colB[0]},${layer.colB[1]},${layer.colB[2]},0.65)`);
-    ctx.fillStyle = gradient;
+  // Fill under line A
+  const fillGrad = ctx.createLinearGradient(0, baseY - maxAmp, 0, baseY);
+  fillGrad.addColorStop(0,    `rgba(${tr},${tg},${tb},0.20)`);
+  fillGrad.addColorStop(0.55, `rgba(${tr},${tg},${tb},0.09)`);
+  fillGrad.addColorStop(1,    `rgba(${tr},${tg},${tb},0.02)`);
+  ctx.fillStyle = fillGrad;
 
+  ctx.beginPath();
+  ctx.moveTo(0, baseY);
+  for (let x = 0; x <= drawW; x++) {
+    const bin  = logBin(Math.round((x / drawW) * (maxBin - 1)), maxBin, maxBin);
+    const v    = frequencyData[bin] / 255;
+    const wave = Math.sin((x / drawW) * Math.PI * 4 + time * 0.6) * h * 0.022 * (0.4 + midLevel * 0.9);
+    ctx.lineTo(x, baseY - ampAt(x, v, 1.0) - wave);
+  }
+  ctx.lineTo(drawW, baseY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Two stroked lines
+  lines.forEach((line) => {
+    const grad = ctx.createLinearGradient(0, 0, drawW, 0);
+    grad.addColorStop(0,    `rgba(${line.r},${line.g},${line.b},${line.alpha * 0.65})`);
+    grad.addColorStop(0.35, `rgba(${line.r},${line.g},${line.b},${line.alpha})`);
+    grad.addColorStop(0.65, `rgba(${line.r},${line.g},${line.b},${line.alpha})`);
+    grad.addColorStop(1,    `rgba(${line.r},${line.g},${line.b},${line.alpha * 0.65})`);
+
+    ctx.save();
+    ctx.shadowBlur  = 8 + bassLevel * 10;
+    ctx.shadowColor = `rgba(${line.r},${line.g},${line.b},0.50)`;
+    ctx.strokeStyle = grad;
+    ctx.lineWidth   = line.lineW;
+    ctx.lineJoin    = 'round';
     ctx.beginPath();
-    ctx.moveTo(0, h);
-    for (let i = 0; i <= w; i++) {
-      const bin = Math.floor((i / w) * frequencyData.length * 0.9);
-      const v   = frequencyData[bin] / 255;
-      const audioH = v * h * layer.amp * (0.5 + overallLevel * 0.9 + bassLevel * 0.5);
-      const wave   = Math.sin((i / w) * Math.PI * (3 + li) + time * layer.speed + layer.phase) * h * 0.04 * (0.5 + midLevel * 0.8);
-      ctx.lineTo(i, baseY - audioH - wave);
-    }
-    ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
-  });
 
+    for (let x = 0; x <= drawW; x++) {
+      const bin  = logBin(Math.round((x / drawW) * (maxBin - 1)), maxBin, maxBin);
+      const v    = frequencyData[bin] / 255;
+      const wave = Math.sin((x / drawW) * Math.PI * 4 + time * 0.6 * line.speedMult + line.phaseOffset * Math.PI * 2)
+                   * h * 0.025 * (0.4 + midLevel * 0.9);
+      const y = baseY - ampAt(x, v, line.ampMult) - wave;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  });
 };
 
 // ---------------------------------------------------------------------------
-// BASIC3 — classic spectrum bars (eq2 reference)
-// Black bg, vertical bars, cyan→blue→purple→magenta color gradient
+// BASIC3 — log-scale spectrum bars with smoothing, peak hold, and glow
 // ---------------------------------------------------------------------------
-const drawBasic3: DrawFn = (ctx, w, h, data, _t, _s, preset) => {
+const drawBasic3: DrawFn = (ctx, w, h, data, _t, state, preset) => {
   ctx.clearRect(0, 0, w, h);
 
   const { frequencyData, bassLevel, overallLevel } = data;
   const [tr, tg, tb] = hexRgb(preset.colorTint);
-  const barCount = 52;
+  const barCount = 56;
   const barW     = w / barCount;
-  const maxH     = h * 0.88;
+  const maxH     = h * 0.90;
+  const maxBin   = Math.floor(frequencyData.length * 0.82);
+
+  // Init smoothing / peak arrays once
+  if (!state.barSmooth || state.barSmooth.length !== barCount) {
+    state.barSmooth = new Float32Array(barCount);
+    state.peakH     = new Float32Array(barCount);
+    state.peakDecay = new Float32Array(barCount);
+  }
+  const smooth = state.barSmooth!;
+  const peakH  = state.peakH!;
+  const peakDk = state.peakDecay!;
 
   for (let i = 0; i < barCount; i++) {
-    const bin  = Math.floor((i / barCount) * frequencyData.length * 0.85);
-    const val  = frequencyData[bin] / 255;
-    const bH   = val * maxH * (0.35 + bassLevel * 1.0 + overallLevel * 0.4);
-    const t    = i / (barCount - 1);
+    const bin = logBin(i, barCount, maxBin);
+    const raw = frequencyData[bin] / 255;
+    const target = raw * maxH * (0.25 + bassLevel * 0.90 + overallLevel * 0.45);
 
-    // Gradient from tint color (darker left) to brighter right variant
-    const cr = Math.min(255, Math.round(tr * (0.5 + t * 0.7)));
-    const cg = Math.min(255, Math.round(tg * (0.5 + t * 0.7)));
-    const cb = Math.min(255, Math.round(tb * (0.6 + t * 0.5)));
+    // Exponential smoothing: fast attack (0.55), slow decay (0.12)
+    smooth[i] = target > smooth[i]
+      ? smooth[i] + (target - smooth[i]) * 0.55
+      : smooth[i] + (target - smooth[i]) * 0.12;
 
-    const alpha = 0.4 + val * 0.6;
-    // Gradient bar: brighter at top
+    const bH = smooth[i];
+
+    // Peak hold
+    if (bH >= peakH[i]) {
+      peakH[i]  = bH;
+      peakDk[i] = 0;
+    } else {
+      peakDk[i] += 0.4;
+      peakH[i]   = Math.max(0, peakH[i] - peakDk[i] * 0.018 * maxH);
+    }
+
+    const t     = i / (barCount - 1);
+    // Color: left stays closer to base tint, right shifts toward complementary
+    const cr = Math.min(255, Math.round(tr * (0.55 + t * 0.60)));
+    const cg = Math.min(255, Math.round(tg * (0.45 + t * 0.75)));
+    const cb = Math.min(255, Math.round(tb * (0.70 + t * 0.40)));
+    const alpha = 0.45 + (bH / maxH) * 0.55;
+
+    // Glow shadow
+    ctx.save();
+    ctx.shadowBlur  = 6 + (bH / maxH) * 14 + bassLevel * 10;
+    ctx.shadowColor = `rgba(${cr},${cg},${cb},0.65)`;
+
+    // Bar gradient — bright at top, dim at bottom
     const grad = ctx.createLinearGradient(0, h - bH, 0, h);
     grad.addColorStop(0,   `rgba(${cr},${cg},${cb},${alpha})`);
-    grad.addColorStop(0.6, `rgba(${cr},${cg},${cb},${alpha * 0.75})`);
-    grad.addColorStop(1,   `rgba(${cr},${cg},${cb},${alpha * 0.35})`);
+    grad.addColorStop(0.55, `rgba(${cr},${cg},${cb},${alpha * 0.70})`);
+    grad.addColorStop(1,   `rgba(${cr},${cg},${cb},${alpha * 0.20})`);
     ctx.fillStyle = grad;
-    ctx.fillRect(i * barW + barW * 0.08, h - bH, barW * 0.84, bH);
 
-    // Tiny cap dot at top
-    if (bH > 3) {
-      ctx.fillStyle = `rgba(${cr},${cg},${cb},${0.75 + val * 0.25})`;
-      ctx.fillRect(i * barW + barW * 0.08, h - bH - 2, barW * 0.84, 2);
+    const bx = i * barW + barW * 0.10;
+    const bw = barW * 0.80;
+    if (bH > 0.5) ctx.fillRect(bx, h - bH, bw, bH);
+
+    ctx.restore();
+
+    // Peak dot — bright 2px line
+    if (peakH[i] > 4) {
+      const pa = Math.min(1, 0.55 + (peakH[i] / maxH) * 0.45);
+      ctx.fillStyle = `rgba(${Math.min(255,cr+40)},${Math.min(255,cg+40)},${Math.min(255,cb+40)},${pa})`;
+      ctx.fillRect(bx, h - peakH[i] - 2, bw, 2);
     }
   }
 };
@@ -895,28 +1059,33 @@ const drawBasic4: DrawFn = (ctx, w, h, data, _t, _s, preset) => {
   grad.addColorStop(1,   `rgba(${Math.min(255,tr+40)},${Math.min(255,tg+40)},${Math.min(255,tb+40)},0.15)`);
   ctx.fillStyle = grad;
 
+  const maxBin4 = Math.floor(frequencyData.length * 0.88);
   ctx.beginPath();
   ctx.moveTo(0, baseY);
-  for (let i = 0; i <= w; i++) {
-    const bin = Math.floor((i / w) * frequencyData.length * 0.9);
+  for (let x = 0; x <= w; x++) {
+    const bin = logBin(Math.round((x / w) * (maxBin4 - 1)), maxBin4, maxBin4);
     const v   = frequencyData[bin] / 255;
     const y   = baseY - v * maxAmp * (0.3 + overallLevel * 1.0 + bassLevel * 0.5);
-    ctx.lineTo(i, y);
+    ctx.lineTo(x, y);
   }
   ctx.lineTo(w, baseY);
   ctx.closePath();
   ctx.fill();
 
+  ctx.save();
+  ctx.shadowBlur  = 6 + bassLevel * 10;
+  ctx.shadowColor = `rgba(${tr},${Math.round(tg*0.7)},${Math.round(tb*0.8)},0.5)`;
   ctx.strokeStyle = `rgba(${tr},${Math.round(tg*0.7)},${Math.round(tb*0.8)},${0.55 + bassLevel * 0.35})`;
-  ctx.lineWidth = 1.2;
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
-  for (let i = 0; i <= w; i++) {
-    const bin = Math.floor((i / w) * frequencyData.length * 0.9);
+  for (let x = 0; x <= w; x++) {
+    const bin = logBin(Math.round((x / w) * (maxBin4 - 1)), maxBin4, maxBin4);
     const v   = frequencyData[bin] / 255;
     const y   = baseY - v * maxAmp * (0.3 + overallLevel * 1.0 + bassLevel * 0.5);
-    i === 0 ? ctx.moveTo(i, y) : ctx.lineTo(i, y);
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   }
   ctx.stroke();
+  ctx.restore();
 };
 
 // ---------------------------------------------------------------------------
@@ -1049,6 +1218,122 @@ function applyReactMode(
 }
 
 // ---------------------------------------------------------------------------
+// RIPPLE — perspective concentric rings, audio-displaced, navy + tint glow
+// ---------------------------------------------------------------------------
+const drawRipple: DrawFn = (ctx, w, h, data, time, _s, preset) => {
+  ctx.clearRect(0, 0, w, h);
+
+  const { frequencyData, overallLevel, bassLevel } = data;
+  const [tr, tg, tb] = hexRgb(preset.colorTint);
+  const [tintH, tintS] = rgbToHsl(tr, tg, tb);
+  const ts = Math.max(60, tintS);
+
+  // No background — rings only (transparent)
+
+  const cx     = w * 0.50;
+  const cy     = h * 0.50; // center
+  const rings  = 30;
+  const maxBinR = Math.floor(frequencyData.length * 0.75);
+  const pts    = 180; // polygon resolution per ring
+
+  for (let ri = 0; ri < rings; ri++) {
+    const t    = ri / (rings - 1);                 // 0=innermost, 1=outermost
+    const bin  = logBin(Math.round(t * (maxBinR - 1)), maxBinR, maxBinR);
+    const v    = frequencyData[bin] / 255;
+
+    const baseRx = w * 0.04 + w * 0.52 * Math.pow(t, 0.65);
+    const perspY = 0.18 + t * 0.22;               // flatten outer rings more
+    const pulse  = v * 10 * (1 - t * 0.6) * (0.4 + overallLevel * 0.9);
+
+    // Hue sweeps from tintH (inner) to tintH+70 (outer)
+    const ringH  = tintH + t * 70;
+    const alpha  = (0.35 + v * 0.65) * (1 - t * 0.2);
+    const lw     = 0.8 + v * 1.8 * (1 - t * 0.4);
+
+    ctx.save();
+    ctx.lineWidth   = lw;
+    ctx.strokeStyle = `hsla(${ringH},${ts + 15}%,${55 + v * 25}%,${alpha})`;
+    ctx.shadowBlur  = 3 + v * 12;
+    ctx.shadowColor = `hsla(${ringH},90%,70%,0.7)`;
+    ctx.beginPath();
+
+    for (let p = 0; p <= pts; p++) {
+      const angle = (p / pts) * Math.PI * 2;
+      // Per-angle frequency displacement (read around the ring)
+      const fBin = logBin(Math.round(((p / pts) * 0.6 + t * 0.4) * (maxBinR - 1)), maxBinR, maxBinR);
+      const fv   = frequencyData[fBin] / 255;
+      const rx   = baseRx + pulse + fv * 5 * (1 - t * 0.5)
+                   + Math.sin(angle * 3 + time * 0.8 + ri * 0.2) * 2 * overallLevel;
+      const x    = cx + Math.cos(angle) * rx;
+      const y    = cy + Math.sin(angle) * rx * perspY;
+      p === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+// ---------------------------------------------------------------------------
+// FLOW — multi-layer mirrored waveform with horizontal color gradient
+// ---------------------------------------------------------------------------
+const drawFlow: DrawFn = (ctx, w, h, data, time, _s, preset) => {
+  ctx.clearRect(0, 0, w, h);
+
+  const { frequencyData, overallLevel, bassLevel, midLevel } = data;
+  const [tr, tg, tb] = hexRgb(preset.colorTint);
+  const [tintH] = rgbToHsl(tr, tg, tb);
+
+  const layers  = 5;
+  const drawWF  = w * 0.95;
+  const maxBinF = Math.floor(frequencyData.length * 0.60);
+  const cy      = h * 0.52;
+
+  for (let layer = layers - 1; layer >= 0; layer--) {
+    const lt      = layer / (layers - 1);
+    const maxAmp  = h * (0.36 - layer * 0.03);
+    const phase   = layer * 0.50;
+    const alpha   = 0.42 + lt * 0.22;
+
+    // Wider hue sweep (180°) + blur effect via multiple overlapping fills
+    ctx.save();
+    ctx.filter = `blur(${2 + lt * 5}px)`; // blur increases for outer layers → spread effect
+    const grad = ctx.createLinearGradient(0, 0, drawWF, 0);
+    grad.addColorStop(0,    `hsla(${tintH},        90%,68%,${alpha})`);
+    grad.addColorStop(0.25, `hsla(${tintH + 45},   88%,65%,${alpha})`);
+    grad.addColorStop(0.55, `hsla(${tintH + 100},  85%,68%,${alpha})`);
+    grad.addColorStop(0.80, `hsla(${tintH + 150},  82%,65%,${alpha})`);
+    grad.addColorStop(1,    `hsla(${tintH + 180},  78%,62%,${alpha * 0.85})`);
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, cy);
+
+    // Top half — forward pass
+    for (let x = 0; x <= drawWF; x += 2) {
+      const bin  = logBin(Math.round((x / drawWF) * (maxBinF - 1)), maxBinF, maxBinF);
+      const v    = frequencyData[bin] / 255;
+      const wave = Math.sin((x / drawWF) * Math.PI * 4 + time * 0.55 + phase)
+                   * h * 0.022 * (0.4 + midLevel * 0.9);
+      ctx.lineTo(x, cy - v * maxAmp * (0.38 + overallLevel * 0.72 + bassLevel * 0.15) - wave);
+    }
+
+    // Bottom half — reverse pass (mirror, slightly smaller)
+    for (let x = drawWF; x >= 0; x -= 2) {
+      const bin  = logBin(Math.round((x / drawWF) * (maxBinF - 1)), maxBinF, maxBinF);
+      const v    = frequencyData[bin] / 255;
+      const wave = Math.sin((x / drawWF) * Math.PI * 4 + time * 0.50 + phase + Math.PI * 0.6)
+                   * h * 0.018 * (0.4 + midLevel * 0.8);
+      ctx.lineTo(x, cy + v * maxAmp * 0.55 * (0.32 + overallLevel * 0.60) + wave);
+    }
+
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+};
+
+// ---------------------------------------------------------------------------
 // Preset → draw function map
 // ---------------------------------------------------------------------------
 
@@ -1064,7 +1349,9 @@ const DRAW_FNS: Record<string, DrawFn> = {
   pixel:       drawPixel,
   bloom:       drawBloom,
   horizon:     drawHorizon,
-  singularity: drawSingularity,
+  aurora:      drawAurora,
+  ripple:      drawRipple,
+  flow:        drawFlow,
   basic1:      drawBasic1,
   basic2:      drawBasic2,
   basic3:      drawBasic3,

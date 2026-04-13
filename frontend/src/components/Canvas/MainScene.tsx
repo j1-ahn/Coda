@@ -25,20 +25,28 @@
 
 import React, { useRef, useMemo, Suspense, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useTexture, OrthographicCamera } from '@react-three/drei';
+import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   EffectComposer,
   Bloom,
   Noise,
   Vignette,
+  ChromaticAberration,
+  Scanline,
+  Glitch,
 } from '@react-three/postprocessing';
+// BlendFunction numeric constants (from postprocessing package)
+// NORMAL = 23, OVERLAY = 24
+const BlendFunction = { NORMAL: 23, OVERLAY: 24 } as const;
 
 import { useCodaStore, Scene, ExternalAsset, VFXParams } from '@/store/useCodaStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import TitleLayer from './TitleLayer';
-import LyricOverlay from './LyricOverlay';
-import { useParallax } from '@/hooks/useParallax';
+// LyricOverlay (WebGL) replaced by LyricHTMLOverlay (HTML) in page.tsx
 import { LoopShaderMesh } from './LoopShader';
+import ParticleLayer from './ParticleLayer';
+import FilmBurnLayer from './FilmBurnLayer';
 
 // ---------------------------------------------------------------------------
 // Pass 1: Background — image or video
@@ -48,29 +56,63 @@ interface BackgroundMeshProps {
   scene: Scene;
 }
 
+function buildMaskTexture(points: { x: number; y: number }[]): THREE.CanvasTexture | null {
+  if (points.length < 4) return null; // minimum for a closed polygon
+  const SIZE = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = SIZE;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, SIZE, SIZE);
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    const x = p.x * SIZE, y = p.y * SIZE;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fill();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
 /** Image background — uses drei useTexture */
 function ImageBackgroundMesh({ scene }: BackgroundMeshProps) {
-  const meshRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
   const texture = useTexture(scene.background.url ?? '');
-  const parallaxPos = useParallax(scene.effects.parallaxStrength ?? 0.08);
+  const depthTexture = useTexture(scene.effects.depthMapUrl ?? scene.background.url ?? '');
 
-  useFrame(() => {
-    if (!meshRef.current || !scene.effects.parallaxEnabled) return;
-    meshRef.current.position.x = parallaxPos.current.x;
-    meshRef.current.position.y = parallaxPos.current.y;
-  });
+  const {
+    loopModes, loopStrength, depthMapUrl, loopMaskPoints,
+    windDirection, windSpeed, windFrequency, windTurbulence,
+    rippleOriginX, rippleOriginY, rippleSpeed, rippleDecay,
+    depthNearSpeed, depthMidSpeed, depthFarSpeed, depthHaze,
+  } = scene.effects;
+  const maskTex = useMemo(() => buildMaskTexture(loopMaskPoints), [loopMaskPoints]);
+  const hasMask = loopMaskPoints.length >= 4;
 
-  const { loopMode, loopStrength } = scene.effects;
   return (
-    <group ref={meshRef}>
-      <LoopShaderMesh
-        texture={texture}
-        mode={loopMode}
-        strength={loopStrength}
-        scale={[viewport.width, viewport.height, 1]}
-      />
-    </group>
+    <LoopShaderMesh
+      texture={texture}
+      loopModes={loopModes}
+      strength={loopStrength}
+      depthMap={loopModes.depth && depthMapUrl ? depthTexture : null}
+      maskTex={hasMask ? maskTex : null}
+      scale={[viewport.width, viewport.height, 1]}
+      windDirection={windDirection != null ? windDirection * Math.PI / 4 : 0}
+      windSpeed={windSpeed}
+      windFrequency={windFrequency}
+      windTurbulence={windTurbulence}
+      rippleOriginX={rippleOriginX}
+      rippleOriginY={rippleOriginY}
+      rippleSpeed={rippleSpeed}
+      rippleDecay={rippleDecay}
+      depthNearSpeed={depthNearSpeed}
+      depthMidSpeed={depthMidSpeed}
+      depthFarSpeed={depthFarSpeed}
+      depthHaze={depthHaze}
+    />
   );
 }
 
@@ -78,8 +120,6 @@ function ImageBackgroundMesh({ scene }: BackgroundMeshProps) {
 function VideoBackgroundMesh({ scene }: BackgroundMeshProps) {
   const meshRef = useRef<THREE.Group>(null);
   const { viewport } = useThree();
-  const parallaxPos = useParallax(scene.effects.parallaxStrength ?? 0.08);
-
   const { video, texture } = useMemo(() => {
     const vid = document.createElement('video');
     vid.src = scene.background.url ?? '';
@@ -110,13 +150,17 @@ function VideoBackgroundMesh({ scene }: BackgroundMeshProps) {
     texture.needsUpdate = true;
   });
 
-  const { loopMode, loopStrength } = scene.effects;
+  const { loopModes, loopStrength, loopMaskPoints } = scene.effects;
+  const maskTex = useMemo(() => buildMaskTexture(loopMaskPoints), [loopMaskPoints]);
+  const hasMask = loopMaskPoints.length >= 4;
+
   return (
     <group ref={meshRef}>
       <LoopShaderMesh
         texture={texture}
-        mode={loopMode}
+        loopModes={loopModes}
         strength={loopStrength}
+        maskTex={hasMask ? maskTex : null}
         scale={[viewport.width, viewport.height, 1]}
       />
     </group>
@@ -216,7 +260,7 @@ function VFXComposer({ params, vfxAssets, scene }: VFXComposerProps) {
         ))}
       </Suspense>
 
-      {/* EffectComposer: Bloom + FilmGrain + Vignette */}
+      {/* EffectComposer: Bloom + FilmGrain + Vignette + Chromatic + Scanline + Glitch */}
       <EffectComposer>
         {params.bloom.enabled ? (
           <Bloom
@@ -232,6 +276,29 @@ function VFXComposer({ params, vfxAssets, scene }: VFXComposerProps) {
           <Vignette
             darkness={params.vignette.darkness}
             offset={0.3}
+          />
+        ) : <></>}
+        {params.chromatic.enabled ? (
+          <ChromaticAberration
+            blendFunction={BlendFunction.NORMAL}
+            offset={new THREE.Vector2(params.chromatic.offset, params.chromatic.offset)}
+            radialModulation={false}
+            modulationOffset={0}
+          />
+        ) : <></>}
+        {params.scanline.enabled ? (
+          <Scanline
+            blendFunction={BlendFunction.OVERLAY}
+            density={params.scanline.density}
+            opacity={params.scanline.opacity}
+          />
+        ) : <></>}
+        {params.glitch.enabled ? (
+          <Glitch
+            delay={new THREE.Vector2(1.5, 3.5)}
+            duration={new THREE.Vector2(0.1, 0.3)}
+            strength={new THREE.Vector2(params.glitch.strength * 0.3, params.glitch.strength)}
+            active
           />
         ) : <></>}
       </EffectComposer>
@@ -278,10 +345,15 @@ function SceneContent() {
         <BypassLayer assets={bypassAssets} />
       </Suspense>
 
-      {/* Pass 4: Title + Lyric overlay — above all passes */}
+      {/* Pass 4: Particle + FilmBurn layers */}
+      <Suspense fallback={null}>
+        <ParticleLayer />
+        <FilmBurnLayer />
+      </Suspense>
+
+      {/* Pass 5: Title overlay — LyricHTMLOverlay mounted as HTML in page.tsx */}
       <Suspense fallback={null}>
         <TitleLayer />
-        <LyricOverlay />
       </Suspense>
     </>
   );
@@ -309,6 +381,7 @@ function EmptyStateOverlay() {
 export default function MainScene() {
   const scenes = useCodaStore((s) => s.scenes);
   const activeSceneId = useCodaStore((s) => s.activeSceneId);
+  const previewDpr = useSettingsStore((s) => s.previewDpr);
   const hasBackground = useMemo(() => {
     const active = scenes.find((s) => s.id === activeSceneId) ?? scenes[0];
     return !!active?.background.url;
@@ -322,9 +395,9 @@ export default function MainScene() {
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.0,
           powerPreference: 'high-performance',
-          preserveDrawingBuffer: true,   // MediaRecorder 캡처에 필요
+          preserveDrawingBuffer: true,
         }}
-        dpr={[1, 2]}
+        dpr={previewDpr}
         camera={{ position: [0, 0, 5], fov: 45 }}
         style={{ background: '#0a0a0a' }}
       >

@@ -28,15 +28,21 @@ export default function EQCanvasLayer() {
   })();
 
   const flipTransform = [flipX ? 'scaleX(-1)' : '', flipY ? 'scaleY(-1)' : ''].filter(Boolean).join(' ') || undefined;
-  const mirrorH = Math.round(oh * 0.5); // reflection height = 50% of main
+  const mirrorH = `${oh * 0.5}%`; // reflection height = 50% of main height
+
+  // 컨테이너 밖으로 삐져나오지 않도록 클램핑
+  const safeOx = Math.max(0, Math.min(ox, 100 - ow));
+  const safeOy = Math.max(0, Math.min(oy, 100 - oh));
+  // oh가 캔버스 하단을 넘지 않도록
+  const safeOh = Math.min(oh, 100 - safeOy);
 
   return (
     <div
-      className="absolute pointer-events-none"
-      style={{ left: ox, top: oy, width: ow, opacity: eqOpacity }}
+      className="absolute pointer-events-none overflow-hidden"
+      style={{ left: `${safeOx}%`, top: `${safeOy}%`, width: `${ow}%`, height: `${safeOh}%`, opacity: eqOpacity }}
     >
       {/* Main canvas */}
-      <div style={{ width: ow, height: oh, transform: flipTransform }}>
+      <div style={{ width: '100%', height: '100%', transform: flipTransform }}>
         <EQCanvas
           preset={preset}
           analyserData={EMPTY_ANALYSER}
@@ -50,12 +56,12 @@ export default function EQCanvasLayer() {
       {eqMirror && (
         <div style={{
           position: 'relative',
-          width: ow,
+          width: '100%',
           height: mirrorH,
           overflow: 'hidden',
           transform: `scaleY(-1)${flipX ? ' scaleX(-1)' : ''}`,
         }}>
-          <div style={{ width: ow, height: oh }}>
+          <div style={{ width: '100%', height: '200%' }}>
             <EQCanvas
               preset={preset}
               analyserData={EMPTY_ANALYSER}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCodaStore, sanitizeForSave } from '@/store/useCodaStore';
 
-const API = 'http://localhost:8000';
+const API = '';
 
 interface ProjectMeta {
   project_id: string;

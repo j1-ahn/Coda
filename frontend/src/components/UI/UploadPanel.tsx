@@ -134,9 +134,12 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
       for (const file of toAdd) {
         const url = URL.createObjectURL(file);
         const id = addAudioTrack(file.name, url);
+        useCodaStore.getState().setActiveAudioTrack(id);   // 항상 새 트랙을 active로
         const dur = await loadAudioDuration(url);
         useCodaStore.getState().setWhisperSegments(id, [], dur);
         useCodaStore.getState().setAudioTrackProcessing(id, 'idle');
+        const { useSettingsStore } = await import('@/store/useSettingsStore');
+        useCodaStore.getState().setEqSensitivity(useSettingsStore.getState().eqDefaultSensitivity);
         uploadToBackend('audio', file);
       }
     },
@@ -160,7 +163,9 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
       const blob = await fetch(track.url).then((r) => r.blob());
       const form = new FormData();
       form.append('file', blob, track.fileName);
-      const res = await fetch('/api/whisper/transcribe', { method: 'POST', body: form });
+      const { useSettingsStore } = await import('@/store/useSettingsStore');
+      form.append('model', useSettingsStore.getState().whisperModel);
+      const res = await fetch('http://localhost:8000/api/whisper/transcribe', { method: 'POST', body: form });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setWhisperSegments(track.id, data.segments ?? [], data.duration ?? track.durationSec);

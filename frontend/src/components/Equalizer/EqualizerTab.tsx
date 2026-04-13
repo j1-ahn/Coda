@@ -92,10 +92,12 @@ export default function EqualizerTab() {
         const rect = container.getBoundingClientRect();
         if (ev.clientX >= rect.left && ev.clientX <= rect.right &&
             ev.clientY >= rect.top  && ev.clientY <= rect.bottom) {
-          const w = 280, h = 140;
-          const x = Math.max(0, (rect.width  - w) / 2);
-          const y = Math.max(0, (rect.height - h) / 2);
-          setEqOverlayGeometry(x, y, w, h);
+          // store uses % of canvas dimensions
+          const wPct = Math.round((280 / rect.width)  * 100);
+          const hPct = Math.round((140 / rect.height) * 100);
+          const xPct = Math.max(0, Math.round((100 - wPct) / 2));
+          const yPct = Math.max(0, Math.round((100 - hPct) / 2));
+          setEqOverlayGeometry(xPct, yPct, wPct, hPct);
           setEqOverlayVisible(true);
         }
       }

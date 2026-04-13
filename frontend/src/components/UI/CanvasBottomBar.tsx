@@ -45,6 +45,8 @@ export default function CanvasBottomBar() {
   const setPlaybackTime     = useCodaStore((s) => s.setPlaybackTime);
   const addAudioTrack       = useCodaStore((s) => s.addAudioTrack);
   const scenes              = useCodaStore((s) => s.scenes);
+  const previewMode         = useCodaStore((s) => s.previewMode);
+  const setPreviewMode      = useCodaStore((s) => s.setPreviewMode);
 
   const activeTrack = audioTracks.find((t) => t.id === activeAudioTrackId);
 
@@ -55,6 +57,14 @@ export default function CanvasBottomBar() {
   const waveCanvasRef = useRef<HTMLCanvasElement>(null);
   const prevUrlRef    = useRef<string | null>(null);
   const fileInputRef  = useRef<HTMLInputElement>(null);
+
+  // Always-current refs so event handlers don't capture stale closures
+  const tracksRef          = useRef(audioTracks);
+  const activeTrackIdRef   = useRef(activeAudioTrackId);
+  const setActiveTrackRef  = useRef(setActiveAudioTrack);
+  useEffect(() => { tracksRef.current = audioTracks; }, [audioTracks]);
+  useEffect(() => { activeTrackIdRef.current = activeAudioTrackId; }, [activeAudioTrackId]);
+  useEffect(() => { setActiveTrackRef.current = setActiveAudioTrack; }, [setActiveAudioTrack]);
 
   const [isPlaying, setIsPlaying]     = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -72,7 +82,28 @@ export default function CanvasBottomBar() {
     const onMeta  = () => setDuration(audio.duration);
     const onPlay  = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
-    const onEnded = () => { setIsPlaying(false); setCurrentTime(0); };
+    const onEnded = () => {
+      const tracks    = tracksRef.current;
+      const currentId = activeTrackIdRef.current;
+      const idx       = tracks.findIndex((t) => t.id === currentId);
+      if (tracks.length > 1) {
+        const nextTrack = tracks[(idx + 1) % tracks.length];
+        // Update store so playlist UI highlights the new track
+        setActiveTrackRef.current(nextTrack.id);
+        // Directly swap src + play here; set prevUrlRef so the swap effect skips it
+        if (nextTrack.url) {
+          prevUrlRef.current = nextTrack.url;
+          audio.src = nextTrack.url;
+          audio.load();
+          audio.addEventListener('canplay', () => {
+            audio.play().catch(() => {});
+          }, { once: true });
+        }
+      } else {
+        setIsPlaying(false);
+        setCurrentTime(0);
+      }
+    };
 
     audio.addEventListener('timeupdate',    onTime);
     audio.addEventListener('loadedmetadata', onMeta);
@@ -97,12 +128,27 @@ export default function CanvasBottomBar() {
 
     const audio = audioRef.current;
     if (!audio) return;
+
+    const wasPlaying = !audio.paused;
     audio.pause();
-    setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
     audio.src = url ?? '';
-    if (url) audio.load();
+    if (url) {
+      audio.load();
+      if (wasPlaying) {
+        // resume playback once enough data is loaded
+        audio.addEventListener('canplay', () => {
+          ensureAudioCtx();
+          audio.play().catch(() => {});
+        }, { once: true });
+      } else {
+        setIsPlaying(false);
+      }
+    } else {
+      setIsPlaying(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTrack?.url]);
 
   // Volume sync
@@ -308,6 +354,21 @@ export default function CanvasBottomBar() {
         <span className="font-mono text-[9px] text-ink-300 tabular-nums shrink-0 w-5 text-right">
           {Math.round(volume * 100)}
         </span>
+
+        {/* Preview mode toggle */}
+        <div className="w-px h-3 bg-cream-300 mx-1 shrink-0" />
+        <button
+          onClick={() => setPreviewMode(!previewMode)}
+          title="렌더링 출력 미리보기 (크롬 UI 숨김)"
+          className={`shrink-0 flex items-center gap-1 px-2 py-0.5 border text-[8px] label-caps transition-colors ${
+            previewMode
+              ? 'bg-ink-900 text-cream-100 border-ink-900'
+              : 'text-ink-400 border-cream-300 hover:text-ink-900 hover:border-ink-500'
+          }`}
+        >
+          <PreviewIcon active={previewMode} />
+          {previewMode ? 'EXIT' : 'PREVIEW'}
+        </button>
       </div>
 
       {/* Track pills */}
@@ -361,4 +422,9 @@ function UploadIcon() {
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 7.5m0 0L7.5 12m4.5-4.5V21" />
     </svg>
   );
+}
+function PreviewIcon({ active }: { active: boolean }) {
+  return active
+    ? <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth={2} strokeLinecap="round" fill="none"/></svg>
+    : <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
 }

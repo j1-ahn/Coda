@@ -109,15 +109,17 @@ interface RowProps {
   onStartChange: (v: number) => void;
   onEndChange: (v: number) => void;
   onRemove: () => void;
+  onInsertAbove: () => void;
 }
 
 function SegmentRow({
   seg, idx, isActive, isTapFocused,
-  onTapFocus, onTextChange, onStartChange, onEndChange, onRemove,
+  onTapFocus, onTextChange, onStartChange, onEndChange, onRemove, onInsertAbove,
 }: RowProps) {
   return (
     <div
       onClick={onTapFocus}
+      onContextMenu={(e) => { e.preventDefault(); onInsertAbove(); }}
       className={`flex items-center gap-1.5 px-2 py-1 border-b border-cream-200 cursor-pointer transition-colors
         ${isActive ? 'bg-ink-900/8' : ''}
         ${isTapFocused ? 'ring-1 ring-inset ring-ink-900/30' : ''}
@@ -231,6 +233,24 @@ export default function SubtitleEditor() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [tapMode, tapIdx, segments, currentPlaybackTime, activeAudioTrackId, updateTextSegment]);
+
+  // ── Insert above ──────────────────────────────────────────────────────────
+  const handleInsertAbove = useCallback((idx: number) => {
+    if (!activeAudioTrackId) return;
+    const prevEnd = idx > 0 ? segments[idx - 1].end : 0;
+    const nextStart = segments[idx].start;
+    const mid = (prevEnd + nextStart) / 2;
+    const newSeg: WhisperSegment = {
+      id: `manual-${Date.now()}`,
+      start: Math.max(prevEnd, mid - 1),
+      end: Math.min(nextStart, mid + 1),
+      text: '',
+    };
+    const newSegs = [...segments];
+    newSegs.splice(idx, 0, newSeg);
+    const dur = activeTrack?.durationSec ?? newSegs[newSegs.length - 1].end;
+    setWhisperSegments(activeAudioTrackId, newSegs, dur);
+  }, [activeAudioTrackId, segments, activeTrack, setWhisperSegments]);
 
   // ── Split ─────────────────────────────────────────────────────────────────
   const handleSplit = useCallback(() => {
@@ -366,6 +386,7 @@ export default function SubtitleEditor() {
             onStartChange={(v) => updateTextSegment(activeAudioTrackId!, seg.id, { start: v })}
             onEndChange={(v) => updateTextSegment(activeAudioTrackId!, seg.id, { end: v })}
             onRemove={() => removeTextSegment(activeAudioTrackId!, seg.id)}
+            onInsertAbove={() => handleInsertAbove(idx)}
           />
         ))}
       </div>

@@ -22,7 +22,9 @@ export const DEFAULT_PRESETS: EQPreset[] = [
   { id: 'pixel',       name: 'PIXEL',       reactMode: 'original', colorTint: '#f59e0b' },
   { id: 'bloom',       name: 'BLOOM',       reactMode: 'original', colorTint: '#fb7185' },
   { id: 'horizon',     name: 'HORIZON',     reactMode: 'original', colorTint: '#f97316' },
-  { id: 'singularity', name: 'SINGULARITY', reactMode: 'original', colorTint: '#6366f1' },
+  { id: 'aurora',      name: 'AURORA',      reactMode: 'original', colorTint: '#ffffff' },
+  { id: 'ripple',      name: 'RIPPLE',      reactMode: 'original', colorTint: '#7c3aed' },
+  { id: 'flow',        name: 'FLOW',        reactMode: 'original', colorTint: '#3b82f6' },
 ];
 
 // ---------------------------------------------------------------------------

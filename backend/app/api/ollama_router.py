@@ -25,9 +25,11 @@ router = APIRouter(prefix="/api/ollama", tags=["ollama"])
 # Config
 # ---------------------------------------------------------------------------
 
-OLLAMA_BASE_URL = "http://localhost:11434"
-OLLAMA_MODEL = "gemma3:4b"
-OLLAMA_TIMEOUT = 120.0  # seconds — LLM generation can be slow
+OLLAMA_BASE_URL  = "http://localhost:11434"
+OLLAMA_MODEL     = "gemma3:4b"          # analyze-audio용
+OLLAMA_TRANS_MODEL = "gemma4:e4b"       # 번역 전용
+OLLAMA_TIMEOUT   = 120.0
+TRANSLATE_BATCH  = 20                   # 한 번에 번역할 세그먼트 수
 
 # ---------------------------------------------------------------------------
 # Request / Response schemas
@@ -268,6 +270,143 @@ async def analyze_audio(req: AnalyzeAudioRequest) -> AnalyzeAudioResponse:
         return _default_response(str(exc))
 
     return _parse_ollama_response(raw_text, req.duration_sec)
+
+
+# ---------------------------------------------------------------------------
+# Translation endpoint
+# ---------------------------------------------------------------------------
+
+class SegmentIn(BaseModel):
+    id: str
+    start: float
+    end: float
+    text: str
+
+
+class TranslateRequest(BaseModel):
+    segments: List[SegmentIn]
+    target_language: str = Field(default="Korean", description="번역 목표 언어 (기본: Korean)")
+
+
+class TranslateResponse(BaseModel):
+    segments: List[SegmentIn]
+    model: str
+    warning: Optional[str] = None
+
+
+_TRANSLATE_SYSTEM = """You are a professional subtitle translator.
+You will receive a JSON array of subtitle segments and must return a JSON array of the same length
+with each 'text' field translated to {target_language}.
+Keep 'id', 'start', 'end' fields unchanged.
+Output ONLY valid JSON array — no markdown, no explanation.
+"""
+
+_TRANSLATE_USER_TMPL = """Translate these subtitles to {target_language}:
+{segments_json}"""
+
+
+def _parse_translated_segments(
+    raw: str,
+    original: List[SegmentIn],
+) -> List[SegmentIn]:
+    """Ollama 응답에서 번역된 세그먼트 배열을 파싱합니다."""
+    text = raw.strip()
+    # 마크다운 코드펜스 제거
+    if "```" in text:
+        blocks = text.split("```")
+        for i, block in enumerate(blocks):
+            if i % 2 == 1:
+                text = block.strip()
+                if text.startswith("json"):
+                    text = text[4:].strip()
+                break
+
+    start = text.find("[")
+    end = text.rfind("]") + 1
+    if start == -1 or end == 0:
+        return original
+
+    try:
+        data = json.loads(text[start:end])
+    except json.JSONDecodeError:
+        return original
+
+    if not isinstance(data, list) or len(data) != len(original):
+        return original
+
+    result = []
+    for orig, item in zip(original, data):
+        result.append(SegmentIn(
+            id=orig.id,
+            start=orig.start,
+            end=orig.end,
+            text=str(item.get("text", orig.text)).strip(),
+        ))
+    return result
+
+
+@router.post("/translate", response_model=TranslateResponse)
+async def translate_segments(req: TranslateRequest) -> TranslateResponse:
+    """
+    Whisper 세그먼트 배열을 Ollama(gemma4:e4b)로 번역합니다.
+
+    - 세그먼트를 TRANSLATE_BATCH(20)씩 묶어 배치 처리합니다.
+    - Ollama 미설치/미실행 시 원문 그대로 반환하고 warning을 포함합니다.
+    - 번역 모델: gemma4:e4b (로컬 Ollama 필요)
+    """
+    if not req.segments:
+        return TranslateResponse(segments=[], model=OLLAMA_TRANS_MODEL)
+
+    translated: List[SegmentIn] = []
+    batches = [
+        req.segments[i: i + TRANSLATE_BATCH]
+        for i in range(0, len(req.segments), TRANSLATE_BATCH)
+    ]
+
+    warning: Optional[str] = None
+
+    for batch in batches:
+        segments_json = json.dumps(
+            [s.model_dump() for s in batch],
+            ensure_ascii=False,
+            indent=2,
+        )
+        system_prompt = _TRANSLATE_SYSTEM.format(target_language=req.target_language)
+        user_prompt   = _TRANSLATE_USER_TMPL.format(
+            target_language=req.target_language,
+            segments_json=segments_json,
+        )
+        payload = {
+            "model": OLLAMA_TRANS_MODEL,
+            "prompt": user_prompt,
+            "system": system_prompt,
+            "stream": False,
+            "options": {"temperature": 0.1, "num_predict": 2048},
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+                resp = await client.post(f"{OLLAMA_BASE_URL}/api/generate", json=payload)
+                resp.raise_for_status()
+                raw_text = resp.json().get("response", "")
+                translated.extend(_parse_translated_segments(raw_text, batch))
+        except httpx.ConnectError:
+            logger.warning("Ollama unreachable for translation — returning originals.")
+            warning = (
+                "Ollama 서버에 연결할 수 없습니다. "
+                "번역을 사용하려면 Ollama를 설치하고 'ollama run gemma4:e4b' 를 실행하세요."
+            )
+            translated.extend(batch)
+        except Exception as exc:
+            logger.warning("Translation batch failed: %s", exc)
+            warning = f"번역 실패: {exc}"
+            translated.extend(batch)
+
+    return TranslateResponse(
+        segments=translated,
+        model=OLLAMA_TRANS_MODEL,
+        warning=warning,
+    )
 
 
 @router.get("/health")
