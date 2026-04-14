@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { useCodaStore } from '@/store/useCodaStore';
 import type { TransitionType } from '@/store/useCodaStore';
 
@@ -52,8 +52,27 @@ export default function GraphicsPanel() {
   const singleInputRef = useRef<HTMLInputElement>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [dragSrcIdx,  setDragSrcIdx]  = useState<number | null>(null);
+  const [scenePage,   setScenePage]   = useState(0);
+
+  const SCENES_PER_PAGE = 5;
 
   const activeScene = scenes.find((s) => s.id === activeSceneId);
+
+  // activeScene이 현재 페이지 밖에 있으면 해당 페이지로 자동 이동
+  const activeSceneGlobalIdx = scenes.findIndex((s) => s.id === activeSceneId);
+  const activePage = activeSceneGlobalIdx >= 0 ? Math.floor(activeSceneGlobalIdx / SCENES_PER_PAGE) : 0;
+  const totalPages = Math.ceil(scenes.length / SCENES_PER_PAGE);
+  // 현재 페이지가 유효 범위 초과 시 클램프
+  const clampedPage = Math.min(scenePage, Math.max(0, totalPages - 1));
+  const pageStart   = clampedPage * SCENES_PER_PAGE;
+  const visibleScenes = scenes.slice(pageStart, pageStart + SCENES_PER_PAGE);
+
+  // 클릭으로 선택한 씬이 다른 페이지에 있으면 해당 페이지로 이동
+  useEffect(() => {
+    if (activeSceneGlobalIdx >= 0 && activePage !== clampedPage) {
+      setScenePage(activePage);
+    }
+  }, [activeSceneGlobalIdx, activePage, clampedPage]);
 
   // ── 다중 이미지 업로드 ───────────────────────────────────────────────────
   const handleMultiFiles = useCallback(
@@ -171,19 +190,53 @@ export default function GraphicsPanel() {
 
       {/* ── 2. 씬 썸네일 그리드 ─────────────────────────────────────────── */}
       <div className="p-2 shrink-0">
+        {/* 헤더: 씬 수 + 페이지 네비 + 씬 추가 */}
         <div className="flex items-center justify-between px-1 mb-1.5">
           <span className="label-caps text-[9px] text-ink-400">씬 ({scenes.length})</span>
-          <button
-            onClick={() => addScene()}
-            className="label-caps text-[9px] text-ink-400 hover:text-ink-900 transition-colors"
-          >
-            + 씬 추가
-          </button>
+
+          <div className="flex items-center gap-1">
+            {/* 페이지 < > — 씬이 5개 초과일 때만 표시 */}
+            {totalPages > 1 && (
+              <>
+                <button
+                  onClick={() => setScenePage((p) => Math.max(0, p - 1))}
+                  disabled={clampedPage === 0}
+                  className="w-4 h-4 flex items-center justify-center text-[9px] border border-cream-300
+                    text-ink-400 hover:border-ink-500 hover:text-ink-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  ‹
+                </button>
+                <span className="text-[8px] text-ink-300 tabular-nums">
+                  {clampedPage + 1}/{totalPages}
+                </span>
+                <button
+                  onClick={() => setScenePage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={clampedPage === totalPages - 1}
+                  className="w-4 h-4 flex items-center justify-center text-[9px] border border-cream-300
+                    text-ink-400 hover:border-ink-500 hover:text-ink-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  ›
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => {
+                addScene();
+                // 새 씬은 마지막에 추가 → 마지막 페이지로 이동
+                const newPage = Math.floor(scenes.length / SCENES_PER_PAGE);
+                setScenePage(newPage);
+              }}
+              className="label-caps text-[9px] text-ink-400 hover:text-ink-900 transition-colors ml-1"
+            >
+              + 씬 추가
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col gap-1">
-          {scenes.map((scene, idx) => {
-            const isActive = scene.id === activeSceneId;
+          {visibleScenes.map((scene) => {
+            const idx = scenes.indexOf(scene); // 전체 인덱스 (1-based 표시용)
+            const isActive   = scene.id === activeSceneId;
             const isDragOver = dragOverIdx === idx;
             return (
               <div
