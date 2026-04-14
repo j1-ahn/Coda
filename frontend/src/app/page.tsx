@@ -6,6 +6,7 @@ import { useCodaStore, hydrateFromLocalStorage, saveToLocalStorage } from '@/sto
 import { useSettingsStore } from '@/store/useSettingsStore';
 
 import UploadPanel from '@/components/UI/UploadPanel';
+import GraphicsPanel from '@/components/UI/GraphicsPanel';
 import WhisperSyncPanel from '@/components/UI/WhisperSyncPanel';
 import SubtitleEditor from '@/components/UI/SubtitleEditor';
 import VFXPanel from '@/components/UI/VFXPanel';
@@ -51,10 +52,11 @@ function SceneLoading() {
 // Tab definition
 // ---------------------------------------------------------------------------
 
-type TabId = 'IMAGE' | 'EQ & VFX' | 'LYRIC';
+type TabId = 'GRAPHICS' | 'VFX/LOOP' | 'EQ & VFX' | 'LYRIC';
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'IMAGE',    label: 'IMAGE'  },
+  { id: 'GRAPHICS', label: 'GFX'   },
+  { id: 'VFX/LOOP', label: 'VFX'   },
   { id: 'EQ & VFX', label: 'EQ&PL' },
   { id: 'LYRIC',   label: 'LYRIC'  },
 ];
@@ -97,16 +99,21 @@ function PanelSection({
 }
 
 // ---------------------------------------------------------------------------
-// IMAGE Tab — 배경 업로드 + VFX + Loop + 타이틀
+// GRAPHICS Tab — 다중 이미지 업로드 + 씬 트랜지션
 // ---------------------------------------------------------------------------
 
-function ImageTab() {
+function GraphicsTab() {
+  return <GraphicsPanel />;
+}
+
+// ---------------------------------------------------------------------------
+// VFX/LOOP Tab — VFX + Loop 애니메이션
+// ---------------------------------------------------------------------------
+
+function VFXLoopTab() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto divide-y divide-cream-300">
-      {/* 배경 + VFX */}
       <div className="flex flex-col shrink-0">
-        <UploadPanel mode="background" />
-        <div className="border-t border-cream-300" />
         <VFXPanel />
       </div>
       <PanelSection title="Loop Animation">
@@ -341,7 +348,7 @@ export default function Home() {
   const setExportFormat = useCodaStore((s) => s.setExportFormat);
   const previewMode    = useCodaStore((s) => s.previewMode);
 
-  const [activeTab, setActiveTab] = useState<TabId>('IMAGE');
+  const [activeTab, setActiveTab] = useState<TabId>('GRAPHICS');
   const autoSaveInterval = useSettingsStore((s) => s.autoSaveInterval);
 
   // Hydrate once on mount
@@ -426,7 +433,7 @@ export default function Home() {
           </div>
 
           {/* Title / EQ font panel — footer 위에 고정 */}
-          {!previewMode && activeTab === 'IMAGE' && (
+          {!previewMode && (activeTab === 'GRAPHICS' || activeTab === 'VFX/LOOP') && (
             <div className="shrink-0 border-t border-cream-300 bg-cream-100">
               <TitleCustomPanel />
             </div>
@@ -468,7 +475,8 @@ export default function Home() {
 
           {/* Tab content */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            {activeTab === 'IMAGE'    && <ImageTab />}
+            {activeTab === 'GRAPHICS' && <GraphicsTab />}
+            {activeTab === 'VFX/LOOP' && <VFXLoopTab />}
             {activeTab === 'EQ & VFX' && <EQTab />}
             {activeTab === 'LYRIC'    && <LyricTab />}
           </div>

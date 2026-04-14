@@ -18,7 +18,7 @@ import { useCodaStore } from '@/store/useCodaStore';
 // ---------------------------------------------------------------------------
 
 type FontPreset = 'elegant' | 'lofi' | 'pop' | 'retro3d' | 'emboss' | 'glitch'
-               | 'neon' | 'mono' | 'vapor' | 'chrome' | 'dark' | 'ice';
+               | 'neon' | 'graffiti' | 'vapor' | 'chrome' | 'dark' | 'ice';
 
 interface PresetConfig {
   fontFamily: string;
@@ -189,20 +189,20 @@ const PRESETS: Record<FontPreset, PresetConfig> = {
     shimmer: false,
   },
 
-  // ── 8. Mono — Space Grotesk, terminal green phosphor ─────────────────────
-  mono: {
-    fontFamily: "'Space Grotesk', monospace",
+  // ── 8. Graffiti — Permanent Marker, spray-paint urban style ─────────────
+  graffiti: {
+    fontFamily: "'Permanent Marker', 'Segoe Print', cursive",
     fontWeight: 400,
-    letterSpacing: '0.22em',
-    textTransform: 'uppercase',
-    gradient: 'linear-gradient(180deg, #00ff88 0%, #00cc66 60%, #008844 100%)',
-    glowFilter: 'drop-shadow(0 0 10px rgba(0,255,136,0.8)) drop-shadow(0 0 3px rgba(0,255,136,1))',
-    mainSize: 'clamp(14px, 3.2vw, 56px)',
-    cornerSize: 'clamp(7px, 0.9vw, 13px)',
-    subScale: 0.42,
-    subOpacity: 0.55,
-    subSpacing: '0.35em',
-    lineHeight: 1.3,
+    letterSpacing: '0.04em',
+    textTransform: 'none',
+    gradient: 'linear-gradient(135deg, #ff6b35 0%, #f7c59f 40%, #ff6b35 100%)',
+    glowFilter: 'drop-shadow(2px 2px 0px rgba(0,0,0,0.8)) drop-shadow(-1px -1px 0px rgba(0,0,0,0.5))',
+    mainSize: 'clamp(16px, 3.6vw, 62px)',
+    cornerSize: 'clamp(8px, 1.0vw, 15px)',
+    subScale: 0.44,
+    subOpacity: 0.75,
+    subSpacing: '0.06em',
+    lineHeight: 1.1,
     showRule: false,
     shimmer: false,
   },

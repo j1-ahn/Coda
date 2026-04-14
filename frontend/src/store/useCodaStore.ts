@@ -25,6 +25,13 @@ export interface TextTrack {
   };
 }
 
+export type TransitionType =
+  | 'cut' | 'fade' | 'dissolve' | 'white-flash' | 'black-flash'
+  | 'wipe-left' | 'wipe-right' | 'wipe-up' | 'wipe-down'
+  | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down'
+  | 'zoom-in' | 'zoom-out' | 'blur' | 'glitch' | 'film-burn'
+  | 'circle-wipe' | 'spin';
+
 export interface Scene {
   id: string;
   order: number;
@@ -34,6 +41,10 @@ export interface Scene {
     fileName: string | null;
   };
   durationSec: number;
+  transition: {
+    type: TransitionType;
+    durationMs: number;  // 0–2000ms
+  };
   textTracks: TextTrack[];
   effects: {
     parallaxEnabled: boolean;
@@ -123,7 +134,7 @@ export interface CodaStore {
   titlePlayMode: 'loop' | 'once' | 'stay';
   titleText: string;
   titleFontPreset: 'elegant' | 'lofi' | 'pop' | 'retro3d' | 'emboss' | 'glitch'
-                 | 'neon' | 'mono' | 'vapor' | 'chrome' | 'dark' | 'ice';
+                 | 'neon' | 'graffiti' | 'vapor' | 'chrome' | 'dark' | 'ice';
   titleSubtext: string;
 
   // Lyric style
@@ -175,6 +186,7 @@ export interface CodaStore {
   updateSceneBackground: (sceneId: string, background: Scene['background']) => void;
   updateSceneDuration: (sceneId: string, durationSec: number) => void;
   reorderScenes: (orderedIds: string[]) => void;
+  updateSceneTransition: (sceneId: string, transition: Scene['transition']) => void;
 
   // TextTrack (per scene)
   addTextTrack: (sceneId: string, type: TextTrack['type']) => void;
@@ -258,6 +270,7 @@ const makeDefaultScene = (order: number): Scene => ({
   order,
   background: { type: 'image', url: null, fileName: null },
   durationSec: 0,
+  transition: { type: 'fade', durationMs: 800 },
   textTracks: [],
   effects: {
     parallaxEnabled: false,
@@ -419,6 +432,12 @@ export const useCodaStore = create<CodaStore>()(
       set((state) => {
         const scene = state.scenes.find((s) => s.id === sceneId);
         if (scene) scene.durationSec = durationSec;
+      }),
+
+    updateSceneTransition: (sceneId, transition) =>
+      set((state) => {
+        const scene = state.scenes.find((s) => s.id === sceneId);
+        if (scene) scene.transition = transition;
       }),
 
     reorderScenes: (orderedIds) =>
