@@ -51,9 +51,10 @@ export default function GraphicsPanel() {
 
   const multiInputRef  = useRef<HTMLInputElement>(null);
   const singleInputRef = useRef<HTMLInputElement>(null);
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const [dragSrcIdx,  setDragSrcIdx]  = useState<number | null>(null);
-  const [scenePage,   setScenePage]   = useState(0);
+  const [dragOverIdx,    setDragOverIdx]    = useState<number | null>(null);
+  const [dragSrcIdx,     setDragSrcIdx]     = useState<number | null>(null);
+  const [scenePage,      setScenePage]      = useState(0);
+  const [confirmClear,   setConfirmClear]   = useState(false);
 
   const SCENES_PER_PAGE = 5;
 
@@ -171,6 +172,37 @@ export default function GraphicsPanel() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto divide-y divide-cream-300">
 
+      {/* ── 전체 삭제 확인 모달 ──────────────────────────────────────────── */}
+      {confirmClear && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-[#edeae3] border border-cream-300 shadow-lg w-64 p-5 flex flex-col gap-4">
+            <p className="text-[11px] text-ink-900 leading-relaxed">
+              씬 {scenes.length}개를 모두 삭제하고<br />빈 씬 1개로 초기화합니다.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  clearAllScenes();
+                  setScenePage(0);
+                  setConfirmClear(false);
+                }}
+                className="flex-1 py-1.5 label-caps text-[10px] bg-ink-900 text-cream-100 border border-ink-900
+                  hover:bg-ink-700 transition-colors"
+              >
+                삭제
+              </button>
+              <button
+                onClick={() => setConfirmClear(false)}
+                className="flex-1 py-1.5 label-caps text-[10px] border border-cream-300 text-ink-500
+                  hover:border-ink-500 hover:text-ink-900 transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── 1. 이미지 업로드 드롭존 ─────────────────────────────────────── */}
       <div className="p-3 shrink-0">
         <div
@@ -249,12 +281,7 @@ export default function GraphicsPanel() {
             </button>
             {/* 전체 삭제 */}
             <button
-              onClick={() => {
-                if (window.confirm(`씬 ${scenes.length}개를 모두 삭제하고 빈 씬 1개로 초기화합니다.`)) {
-                  clearAllScenes();
-                  setScenePage(0);
-                }
-              }}
+              onClick={() => setConfirmClear(true)}
               className="label-caps text-[9px] text-ink-300 hover:text-red-500 transition-colors ml-0.5"
               title="씬 전체 삭제"
             >

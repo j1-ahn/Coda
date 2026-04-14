@@ -40,42 +40,63 @@ const PHASE_LABELS: Record<string, string> = {
 
 function TranscribeProgress({
   jobId,
+  audioDurationSec,
+  modelName,
   onDone,
   onError,
 }: {
   jobId: string;
+  audioDurationSec: number;
+  modelName: string;
   onDone: () => void;
   onError: (msg: string) => void;
 }) {
-  const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState<string>('queued');
+  const [fakeProgress, setFakeProgress] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // 마운트 상태 추적 (cleanup 후 setState 방지)
   const mountedRef = useRef(true);
   const startRef = useRef(Date.now());
+  const transcribeStartRef = useRef<number | null>(null);
 
-  // 경과 시간 카운터
+  // 모델별 처리 시간 팩터 계산
+  const estimatedSec = (() => {
+    const m = modelName.toLowerCase();
+    let factor = 0.25; // default: large-v3
+    if (m.includes('tiny')) factor = 0.05;
+    else if (m.includes('base')) factor = 0.1;
+    else if (m.includes('small')) factor = 0.15;
+    else if (m.includes('medium')) factor = 0.2;
+    return Math.max(8, audioDurationSec * factor);
+  })();
+
+  // 경과 시간 카운터 + 시간 기반 fake progress 애니메이션
   useEffect(() => {
     const t = setInterval(() => {
-      if (mountedRef.current) {
-        setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
-      }
-    }, 500);
-    return () => clearInterval(t);
-  }, []);
+      if (!mountedRef.current) return;
+      const now = Date.now();
+      setElapsed(Math.floor((now - startRef.current) / 1000));
 
-  // 폴링 루프
+      // transcribing 단계에서만 fake progress 애니메이션
+      if (transcribeStartRef.current !== null) {
+        const tSec = (now - transcribeStartRef.current) / 1000;
+        // 점근 곡선: 0 → 90% (0.9)
+        const p = 0.9 * (1 - Math.exp(-2.5 * tSec / estimatedSec));
+        setFakeProgress(p);
+      }
+    }, 200);
+    return () => clearInterval(t);
+  }, [estimatedSec]);
+
+  // 폴링 루프 — phase 감지, 에러 감지, done 감지 전용 (progress 값 사용 안 함)
   useEffect(() => {
     if (!jobId) return;
 
     let cancelled = false;
     let timerId: ReturnType<typeof setTimeout> | null = null;
-
-    // 연속 실패 카운터 (백엔드 다운 감지)
     let consecutiveFailures = 0;
-    const MAX_FAILURES = 10; // 5초간 (500ms * 10) 연속 실패하면 포기
+    const MAX_FAILURES = 10;
 
     const poll = async () => {
       if (cancelled) return;
@@ -88,9 +109,7 @@ function TranscribeProgress({
           consecutiveFailures++;
           if (consecutiveFailures >= MAX_FAILURES) {
             const msg = `백엔드 응답 없음 (HTTP ${res.status}). 서버가 실행 중인지 확인하세요.`;
-            setErrorMsg(msg);
-            onError(msg);
-            return;
+            setErrorMsg(msg); onError(msg); return;
           }
           if (!cancelled) timerId = setTimeout(poll, 500);
           return;
@@ -108,101 +127,91 @@ function TranscribeProgress({
           consecutiveFailures++;
           if (consecutiveFailures >= MAX_FAILURES) {
             const msg = '백엔드가 재시작되어 작업이 유실되었습니다. 다시 시도해주세요.';
-            setErrorMsg(msg);
-            onError(msg);
-            return;
+            setErrorMsg(msg); onError(msg); return;
           }
           if (!cancelled) timerId = setTimeout(poll, 500);
           return;
         }
 
-        setProgress(p);
-        setPhase(serverPhase);
+        // phase 업데이트 — transcribing 시작 시점 기록
+        setPhase((prev) => {
+          if (serverPhase === 'transcribing' && prev !== 'transcribing') {
+            transcribeStartRef.current = Date.now();
+          }
+          return serverPhase;
+        });
 
         // 에러 상태
         if (data.error) {
-          setErrorMsg(data.error);
-          setProgress(0);
-          onError(data.error);
-          return;
+          setErrorMsg(data.error); onError(data.error); return;
         }
 
-        // 완료 상태 — progress만 100%로 올리고 "완료" 표시는 하지 않음.
-        // 실제 완료 처리(세그먼트 저장)는 handleSTT fetch 응답에서 하므로
-        // 컴포넌트가 언마운트될 때까지 "인식 중…" 상태 유지.
+        // 완료 — handleSTT fetch가 곧 resolve되므로 bar는 현재 위치 유지
+        // (100%로 점프하지 않음, isProcessing=false로 컴포넌트가 언마운트됨)
         if (data.done) {
-          setProgress(1);
-          // phase는 'transcribing' 유지 (사용자에게 완료 오인 방지)
-          onDone();
-          return;
+          onDone(); return;
         }
 
-        // 계속 폴링
         if (!cancelled) timerId = setTimeout(poll, 500);
       } catch {
-        // fetch 자체 실패 (네트워크 오류 등)
         if (cancelled) return;
         consecutiveFailures++;
         if (consecutiveFailures >= MAX_FAILURES) {
           const msg = '백엔드 연결 실패. 서버가 실행 중인지 확인하세요.';
-          setErrorMsg(msg);
-          onError(msg);
-          return;
+          setErrorMsg(msg); onError(msg); return;
         }
-        if (!cancelled) timerId = setTimeout(poll, 1000); // 네트워크 오류 시 1초 대기
+        if (!cancelled) timerId = setTimeout(poll, 1000);
       }
     };
 
-    // 최초 폴링 시작 (약간의 지연 — 백엔드에 job_id가 등록될 시간 확보)
     timerId = setTimeout(poll, 300);
-
-    return () => {
-      cancelled = true;
-      if (timerId) clearTimeout(timerId);
-    };
-    // onDone, onError는 useCallback으로 안정화되어 있으므로 의존성에 포함해도 안전
+    return () => { cancelled = true; if (timerId) clearTimeout(timerId); };
   }, [jobId, onDone, onError]);
 
   // 언마운트 추적
   useEffect(() => {
     mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
+    return () => { mountedRef.current = false; };
   }, []);
 
-  const pct = Math.round(progress * 100);
+  const pct = Math.round(fakeProgress * 100);
   const isLoading = phase === 'queued' || phase === 'loading_model' || phase === 'preprocessing';
   const phaseLabel = PHASE_LABELS[phase] ?? phase;
+
+  // 남은 시간 계산 (transcribing 단계)
+  const remainingLabel = (() => {
+    if (isLoading || errorMsg || transcribeStartRef.current === null) return null;
+    const tSec = (Date.now() - transcribeStartRef.current) / 1000;
+    const remaining = Math.round(estimatedSec - tSec);
+    if (remaining <= 0) return '마무리 중…';
+    return `~${remaining}s 남음`;
+  })();
 
   return (
     <div className="flex flex-col gap-2">
 
-      {/* 단계 + 경과 시간 */}
+      {/* 단계 + 시간 정보 */}
       <div className="flex items-center justify-between">
         <span className="text-[10px] text-ink-500 label-caps">
           {errorMsg ? '오류 발생' : phaseLabel}
         </span>
         <span className="text-[10px] text-ink-400 tabular-nums">
-          {isLoading ? `${elapsed}s` : errorMsg ? '' : `${pct}%`}
+          {errorMsg ? '' : isLoading ? `${elapsed}s` : remainingLabel ?? `${pct}%`}
         </span>
       </div>
 
       {/* 프로그레스 바 */}
       <div className="relative w-full h-2 bg-cream-300 overflow-hidden">
         {errorMsg ? (
-          /* 에러 — 빨간 바 */
           <div className="h-full bg-red-400 w-full" />
         ) : isLoading ? (
-          /* 인디터미네이트 셔머 — 모델 로딩 / 전처리 중 */
           <div
             className="absolute inset-y-0 w-1/4 bg-gradient-to-r from-transparent via-ink-600 to-transparent"
             style={{ animation: 'sttShimmer 1.4s ease-in-out infinite' }}
           />
         ) : (
-          /* 실제 진행률 바 */
           <div
-            className="h-full bg-ink-700 transition-all duration-300"
+            className="h-full bg-ink-700 transition-all duration-200"
             style={{ width: `${pct}%` }}
           />
         )}
@@ -408,6 +417,8 @@ export default function WhisperSyncPanel() {
       {isProcessing && currentJobId && (
         <TranscribeProgress
           jobId={currentJobId}
+          audioDurationSec={activeTrack.durationSec}
+          modelName={useSettingsStore.getState().whisperModel}
           onDone={handleProgressDone}
           onError={handleProgressError}
         />
