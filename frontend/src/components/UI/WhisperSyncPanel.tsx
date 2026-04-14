@@ -22,7 +22,15 @@ function formatTime(sec: number) {
 function TranscribeProgress({ jobId, onDone }: { jobId: string; onDone: () => void }) {
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState<'loading' | 'transcribing'>('loading');
-  const doneRef = useRef(false);
+  const [elapsed, setElapsed] = useState(0);
+  const doneRef   = useRef(false);
+  const startRef  = useRef(Date.now());
+
+  // 경과 시간 카운터
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startRef.current) / 1000)), 500);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!jobId || doneRef.current) return;
@@ -52,44 +60,61 @@ function TranscribeProgress({ jobId, onDone }: { jobId: string; onDone: () => vo
   }, [jobId, onDone]);
 
   const pct = Math.round(progress * 100);
-  const barWidth = `${pct}%`;
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {/* 단계 표시 */}
+    <div className="flex flex-col gap-2">
+
+      {/* 단계 + 경과 시간 */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-ink-400 label-caps">
+        <span className="text-[10px] text-ink-500 label-caps">
           {phase === 'loading' ? '모델 로딩 중…' : '음성 인식 중…'}
         </span>
         <span className="text-[10px] text-ink-400 tabular-nums">
-          {phase === 'loading' ? '--' : `${pct}%`}
+          {phase === 'loading' ? `${elapsed}s` : `${pct}%`}
         </span>
       </div>
 
       {/* 프로그레스 바 */}
-      <div className="w-full h-1.5 bg-cream-300 overflow-hidden">
-        <div
-          className="h-full bg-ink-700 transition-all duration-300"
-          style={{ width: phase === 'loading' ? '0%' : barWidth }}
-        />
+      <div className="relative w-full h-2 bg-cream-300 overflow-hidden">
+        {phase === 'loading' ? (
+          /* 인디터미네이트 셔머 */
+          <div
+            className="absolute inset-y-0 w-1/4 bg-gradient-to-r from-transparent via-ink-600 to-transparent"
+            style={{ animation: 'sttShimmer 1.4s ease-in-out infinite' }}
+          />
+        ) : (
+          /* 실제 진행률 바 */
+          <div
+            className="h-full bg-ink-700 transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        )}
       </div>
 
-      {/* 파형 애니메이션 (로딩 중) */}
-      {phase === 'transcribing' && (
-        <div className="flex items-end gap-0.5 h-4 justify-center">
-          {Array.from({ length: 16 }).map((_, i) => (
-            <div
-              key={i}
-              className="w-1 bg-ink-400 rounded-sm animate-pulse"
-              style={{
-                height: `${Math.max(20, Math.min(100, pct + Math.sin(i * 0.8) * 30))}%`,
-                animationDelay: `${i * 0.06}s`,
-                animationDuration: '0.8s',
-              }}
-            />
-          ))}
-        </div>
+      {/* 파형 — 두 단계 모두 표시 */}
+      <div className="flex items-center gap-0.5 h-5 justify-center">
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div
+            key={i}
+            className="w-[3px] bg-ink-400 origin-bottom"
+            style={{
+              height: phase === 'transcribing'
+                ? `${Math.max(15, Math.min(100, pct * 0.7 + Math.abs(Math.sin(i * 0.6)) * 60))}%`
+                : '60%',
+              animation: 'sttWave 0.9s ease-in-out infinite',
+              animationDelay: `${(i * 0.045) % 0.9}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* 로딩 단계 힌트 */}
+      {phase === 'loading' && elapsed > 5 && (
+        <p className="text-[9px] text-ink-300 text-center">
+          첫 실행 시 모델 로딩에 최대 1분 소요됩니다
+        </p>
       )}
+
     </div>
   );
 }

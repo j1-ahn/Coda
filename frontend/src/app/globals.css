@@ -53,6 +53,18 @@ body {
   background: #9b9891;
 }
 
+/* ── STT loading shimmer ──────────────────────────────────────────── */
+
+@keyframes sttShimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@keyframes sttWave {
+  0%, 100% { transform: scaleY(0.3); }
+  50%       { transform: scaleY(1.0); }
+}
+
 /* ── Title overlay animations ─────────────────────────────────────── */
 
 @keyframes titleFloat {
