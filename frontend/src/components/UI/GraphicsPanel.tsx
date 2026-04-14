@@ -354,7 +354,20 @@ export default function GraphicsPanel() {
       <div className="p-3 shrink-0">
         <div className="flex items-center justify-between mb-2">
           <span className="label-caps text-[9px] text-ink-400">씬 전환 (20종)</span>
-          <span className="text-[9px] text-ink-300">선택 씬에 적용</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                if (!activeSceneId) return;
+                updateSceneTransition(activeSceneId, { type: 'cut', durationMs: 0 });
+              }}
+              className="text-[8px] text-ink-300 hover:text-red-400 transition-colors"
+              title="선택 씬 트랜지션 해제"
+            >
+              선택 해제
+            </button>
+            <span className="text-[8px] text-ink-200">·</span>
+            <span className="text-[9px] text-ink-300">선택 씬에 적용</span>
+          </div>
         </div>
 
         {/* 트랜지션 그리드 */}
@@ -405,14 +418,23 @@ export default function GraphicsPanel() {
           </span>
         </div>
 
-        {/* 전체 씬에 동일 트랜지션 적용 */}
-        <button
-          onClick={() => applyTransitionAll(selectedTransition)}
-          className="mt-2 w-full py-1 label-caps text-[9px] border border-cream-300 text-ink-400
-            hover:border-ink-500 hover:text-ink-900 transition-colors"
-        >
-          전체 씬에 동일 적용
-        </button>
+        {/* 전체 씬 버튼 행 */}
+        <div className="mt-2 flex gap-1">
+          <button
+            onClick={() => applyTransitionAll(selectedTransition)}
+            className="flex-1 py-1 label-caps text-[9px] border border-cream-300 text-ink-400
+              hover:border-ink-500 hover:text-ink-900 transition-colors"
+          >
+            전체 씬 동일 적용
+          </button>
+          <button
+            onClick={() => scenes.forEach((s) => updateSceneTransition(s.id, { type: 'cut', durationMs: 0 }))}
+            className="flex-1 py-1 label-caps text-[9px] border border-cream-300 text-ink-300
+              hover:border-red-400 hover:text-red-400 transition-colors"
+          >
+            전체 씬 해제
+          </button>
+        </div>
       </div>
 
       {/* ── 4. 씬 재생 시간 ─────────────────────────────────────────────── */}
