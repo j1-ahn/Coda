@@ -13,6 +13,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useCodaStore } from '@/store/useCodaStore';
 import { RenderJob } from '@/lib/renderer/RenderJob';
+import { PlaylistRenderJob } from '@/lib/renderer/PlaylistRenderJob';
 import { RenderOptions, RenderProgress, RenderFormat, RenderQuality } from '@/lib/renderer/types';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -101,9 +102,12 @@ function RenderModal({ onClose }: { onClose: () => void }) {
   const [quality,  setQuality]  = useState<RenderQuality>('medium');
   const [duration, setDuration] = useState(maxDuration);
 
+  const hasMultipleTracks = audioTracks.filter((t) => t.url).length > 1;
+
   // Progress
   const [progress, setProgress] = useState<RenderProgress | null>(null);
   const jobRef = useRef<RenderJob | null>(null);
+  const playlistJobRef = useRef<PlaylistRenderJob | null>(null);
 
   const isRunning = progress !== null &&
     !['done', 'error', 'idle'].includes(progress.phase);
@@ -134,8 +138,28 @@ function RenderModal({ onClose }: { onClose: () => void }) {
     }
   }, [fps, format, quality, duration, isRunning]);
 
+  const handlePlaylistRender = useCallback(async () => {
+    if (isRunning) return;
+
+    const job = new PlaylistRenderJob();
+    playlistJobRef.current = job;
+    setProgress({ phase: 'preparing', phasePct: 0, totalPct: 0, message: '플레이리스트 렌더 준비 중…' });
+
+    try {
+      await job.start({ fps, format, quality }, setProgress);
+    } catch (err) {
+      setProgress((prev) => ({
+        ...(prev ?? { phase: 'error', phasePct: 0, totalPct: 0, message: '' }),
+        phase: 'error',
+        error: err instanceof Error ? err.message : String(err),
+        message: '플레이리스트 렌더 실패',
+      }));
+    }
+  }, [fps, format, quality, isRunning]);
+
   const handleAbort = () => {
     jobRef.current?.abort();
+    playlistJobRef.current?.abort();
     setProgress(null);
   };
 
@@ -293,6 +317,15 @@ function RenderModal({ onClose }: { onClose: () => void }) {
               >
                 닫기
               </button>
+              {hasMultipleTracks && (
+                <button
+                  onClick={handlePlaylistRender}
+                  className="px-4 py-1.5 label-caps text-[11px]
+                    border border-ink-500 text-ink-500 hover:bg-ink-500 hover:text-cream-100 transition-colors"
+                >
+                  PLAYLIST
+                </button>
+              )}
               <button
                 onClick={handleRender}
                 disabled={!maxDuration && duration === 0}

@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/ollama", tags=["ollama"])
 # ---------------------------------------------------------------------------
 
 OLLAMA_BASE_URL  = "http://localhost:11434"
-OLLAMA_MODEL     = "gemma3:4b"          # analyze-audio용
+OLLAMA_MODEL     = "gemma4:e4b"         # analyze-audio + prompt-gen용
 OLLAMA_TRANS_MODEL = "gemma4:e4b"       # 번역 전용
 OLLAMA_TIMEOUT   = 120.0
 TRANSLATE_BATCH  = 20                   # 한 번에 번역할 세그먼트 수
@@ -407,6 +407,133 @@ async def translate_segments(req: TranslateRequest) -> TranslateResponse:
         model=OLLAMA_TRANS_MODEL,
         warning=warning,
     )
+
+
+# ---------------------------------------------------------------------------
+# Prompt generation endpoint (PR 탭)
+# ---------------------------------------------------------------------------
+
+class GeneratePromptRequest(BaseModel):
+    topic: str = Field(..., description="주제 또는 테마", examples=["비 오는 도시의 외로운 밤"])
+    style_hint: Optional[str] = Field(
+        default=None,
+        description="스타일 힌트 (장르, 분위기 등)",
+        examples=["lo-fi, cinematic, melancholic"],
+    )
+
+
+class GeneratePromptResponse(BaseModel):
+    image_prompts: List[str] = Field(default_factory=list, description="미드저니/니지저니 이미지 프롬프트 2~3개")
+    audio_prompt: str = Field(default="", description="음악 생성 프롬프트 (장르/분위기/BPM/악기)")
+    lyrics: str = Field(default="", description="가사 (한국어)")
+    raw_response: str = ""
+
+
+_PROMPT_GEN_SYSTEM = """You are a creative director AI that generates three things from a single theme.
+Given a topic (and optional style hint), return a JSON object with EXACTLY this schema:
+
+{
+  "image_prompts": [
+    "<Midjourney prompt 1>",
+    "<Midjourney prompt 2>",
+    "<Niji prompt>"
+  ],
+  "audio_prompt": "<music generation prompt>",
+  "lyrics": "<Korean lyrics, 8-16 lines>"
+}
+
+Rules for image_prompts (2 Midjourney + 1 Niji):
+- Midjourney: vivid cinematic descriptions, end with --ar 16:9 --v 6 --style raw
+- Niji (anime): stylized anime scene, end with --ar 16:9 --niji 6
+- Each prompt should be 1 paragraph, English, highly detailed with lighting/mood/composition
+
+Rules for audio_prompt:
+- Genre, subgenre, BPM range, key instruments, mood, reference style
+- Example: "Lo-fi hip hop, 75 BPM, vinyl crackle, mellow piano chords, rainy night ambiance, jazzy Rhodes, soft boom-bap drums"
+
+Rules for lyrics:
+- Korean lyrics matching the theme and audio mood
+- 8-16 lines, with verse/chorus structure indicated by blank lines
+- Poetic and emotionally resonant
+
+Output ONLY valid JSON — no markdown, no explanation."""
+
+
+def _default_prompt_response(raw: str = "") -> GeneratePromptResponse:
+    return GeneratePromptResponse(
+        image_prompts=["(생성 실패 — Ollama 응답을 확인하세요)"],
+        audio_prompt="",
+        lyrics="",
+        raw_response=raw,
+    )
+
+
+def _parse_prompt_response(raw: str) -> GeneratePromptResponse:
+    text = raw.strip()
+    if "```" in text:
+        blocks = text.split("```")
+        for i, block in enumerate(blocks):
+            if i % 2 == 1:
+                text = block.strip()
+                if text.startswith("json"):
+                    text = text[4:].strip()
+                break
+
+    start = text.find("{")
+    end = text.rfind("}") + 1
+    if start == -1 or end == 0:
+        logger.warning("No JSON object found in prompt generation response.")
+        return _default_prompt_response(raw)
+
+    try:
+        data: Dict[str, Any] = json.loads(text[start:end])
+    except json.JSONDecodeError as exc:
+        logger.warning("JSON parse error in prompt gen: %s", exc)
+        return _default_prompt_response(raw)
+
+    return GeneratePromptResponse(
+        image_prompts=data.get("image_prompts", []),
+        audio_prompt=data.get("audio_prompt", ""),
+        lyrics=data.get("lyrics", ""),
+        raw_response=raw,
+    )
+
+
+@router.post("/generate-prompt", response_model=GeneratePromptResponse)
+async def generate_prompt(req: GeneratePromptRequest) -> GeneratePromptResponse:
+    """
+    주제를 입력하면 이미지 프롬프트(Midjourney/Niji), 오디오 프롬프트, 가사를 생성합니다.
+    Ollama(gemma3:4b) 사용. 서버 미연결 시 기본값 반환.
+    """
+    parts = [f"Theme: {req.topic}"]
+    if req.style_hint:
+        parts.append(f"Style: {req.style_hint}")
+    user_prompt = "\n".join(parts)
+
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": user_prompt,
+        "system": _PROMPT_GEN_SYSTEM,
+        "stream": False,
+        "options": {"temperature": 0.7, "num_predict": 1500},
+    }
+
+    logger.info("Generating prompts for topic='%s'", req.topic)
+
+    try:
+        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+            resp = await client.post(f"{OLLAMA_BASE_URL}/api/generate", json=payload)
+            resp.raise_for_status()
+            raw_text = resp.json().get("response", "")
+            logger.info("Prompt gen response length: %d chars", len(raw_text))
+    except httpx.ConnectError:
+        logger.warning("Ollama unreachable for prompt generation.")
+        return _default_prompt_response("(Ollama unreachable)")
+    except Exception as exc:
+        logger.warning("Prompt gen failed: %s", exc)
+        return _default_prompt_response(str(exc))
+
+    return _parse_prompt_response(raw_text)
 
 
 @router.get("/health")

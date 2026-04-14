@@ -17,15 +17,16 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import shutil
 from pathlib import Path
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from app.core.render_session import session_manager
-from app.core.ffmpeg_nvenc import encode, encode_916_crop
+from app.core.ffmpeg_nvenc import encode, encode_916_crop, concat_videos
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/render", tags=["render"])
@@ -185,6 +186,17 @@ async def _run_encode(session_id: str, req: EncodeRequest) -> None:
             )
             session.output_files["9-16"] = out_916.name
 
+        # Copy to user-specified output path if provided
+        if req.output_path:
+            out_dir = Path(req.output_path)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            for key, fname in session.output_files.items():
+                src = tmp / fname
+                if src.exists():
+                    dst = out_dir / f"coda_{key}.mp4"
+                    shutil.copy2(src, dst)
+                    logger.info("Session %s: copied %s → %s", session_id, src, dst)
+
         session.status = "done"
         session.progress = 1.0
         session.message = "렌더 완료"
@@ -260,3 +272,109 @@ async def download_video(session_id: str, fmt: str):
         media_type="video/mp4",
         filename=f"coda_{fmt}.mp4",
     )
+
+
+# ─── Playlist concat ────────────────────────────────────────────────────────
+
+class ConcatRequest(BaseModel):
+    session_ids: List[str]
+    format: Literal["16:9", "9:16", "both"] = "16:9"
+    ffmpeg_path: Optional[str] = None
+
+
+@router.post("/concat")
+async def concat_sessions(req: ConcatRequest, background_tasks: BackgroundTasks):
+    """
+    Concatenate finished render sessions into a single video.
+    Creates a new session to hold the concatenated output.
+    """
+    # Validate all source sessions are done
+    for sid in req.session_ids:
+        try:
+            s = session_manager.get(sid)
+        except KeyError:
+            raise HTTPException(status_code=404, detail=f"Session {sid} not found")
+        if s.status != "done":
+            raise HTTPException(status_code=409, detail=f"Session {sid} not done yet")
+
+    # Create new session for concat output
+    concat_session = session_manager.create(total_frames=0)
+    concat_session.status = "encoding"
+    concat_session.message = "연결 렌더 준비 중…"
+
+    background_tasks.add_task(_run_concat, concat_session.session_id, req)
+    return {"session_id": concat_session.session_id}
+
+
+async def _run_concat(concat_session_id: str, req: ConcatRequest) -> None:
+    """Background task: concatenate multiple rendered videos."""
+    try:
+        concat_session = session_manager.get(concat_session_id)
+    except KeyError:
+        return
+
+    try:
+        # Collect 16:9 outputs
+        videos_169: List[Path] = []
+        for sid in req.session_ids:
+            s = session_manager.get(sid)
+            fname = s.output_files.get("16-9")
+            if fname:
+                videos_169.append(s.temp_dir / fname)
+
+        if not videos_169:
+            raise RuntimeError("No 16:9 outputs to concatenate")
+
+        out_169 = concat_session.temp_dir / "output_16-9.mp4"
+
+        def on_progress_169(frac: float) -> None:
+            concat_session.progress = frac * (0.7 if req.format == "both" else 1.0)
+            concat_session.message = f"16:9 연결 중… {int(frac * 100)}%"
+
+        await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: concat_videos(
+                video_paths=videos_169,
+                output_path=out_169,
+                ffmpeg_path=req.ffmpeg_path,
+                on_progress=on_progress_169,
+            ),
+        )
+        concat_session.output_files["16-9"] = out_169.name
+
+        # 9:16
+        if req.format in ("9:16", "both"):
+            videos_916: List[Path] = []
+            for sid in req.session_ids:
+                s = session_manager.get(sid)
+                fname = s.output_files.get("9-16")
+                if fname:
+                    videos_916.append(s.temp_dir / fname)
+
+            if videos_916:
+                out_916 = concat_session.temp_dir / "output_9-16.mp4"
+
+                def on_progress_916(frac: float) -> None:
+                    concat_session.progress = 0.7 + frac * 0.3
+                    concat_session.message = f"9:16 연결 중… {int(frac * 100)}%"
+
+                await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    lambda: concat_videos(
+                        video_paths=videos_916,
+                        output_path=out_916,
+                        ffmpeg_path=req.ffmpeg_path,
+                        on_progress=on_progress_916,
+                    ),
+                )
+                concat_session.output_files["9-16"] = out_916.name
+
+        concat_session.status = "done"
+        concat_session.progress = 1.0
+        concat_session.message = "플레이리스트 연결 렌더 완료"
+        logger.info("Concat session %s: done → %s", concat_session_id, concat_session.output_files)
+
+    except Exception as exc:
+        concat_session.status = "error"
+        concat_session.message = str(exc)
+        logger.exception("Concat session %s failed: %s", concat_session_id, exc)

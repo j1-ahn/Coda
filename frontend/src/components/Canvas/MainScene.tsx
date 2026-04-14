@@ -47,6 +47,7 @@ import TitleLayer from './TitleLayer';
 import { LoopShaderMesh } from './LoopShader';
 import ParticleLayer from './ParticleLayer';
 import FilmBurnLayer from './FilmBurnLayer';
+import TransitionLayer from './TransitionLayer';
 
 // ---------------------------------------------------------------------------
 // Pass 1: Background — image or video
@@ -143,10 +144,6 @@ function VideoBackgroundMesh({ scene }: BackgroundMeshProps) {
   }, [video, texture]);
 
   useFrame(() => {
-    if (meshRef.current && scene.effects.parallaxEnabled) {
-      meshRef.current.position.x = parallaxPos.current.x;
-      meshRef.current.position.y = parallaxPos.current.y;
-    }
     texture.needsUpdate = true;
   });
 
@@ -345,7 +342,10 @@ function SceneContent() {
         <BypassLayer assets={bypassAssets} />
       </Suspense>
 
-      {/* Pass 4: Particle + FilmBurn layers */}
+      {/* Pass 4: Transition overlay (between scenes) */}
+      <TransitionLayer />
+
+      {/* Pass 5: Particle + FilmBurn layers */}
       <Suspense fallback={null}>
         <ParticleLayer />
         <FilmBurnLayer />

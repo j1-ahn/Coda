@@ -29,7 +29,87 @@ interface PresetDef {
   preview: React.CSSProperties;
 }
 
-const FONT_PRESETS: PresetDef[] = [
+// ── PR tab: mono, brush, stencil, pixel, deco, noir ─────────────────────────
+const PR_PRESETS: PresetDef[] = [
+  {
+    value: 'mono',
+    label: 'MONO',
+    preview: {
+      fontFamily: "'JetBrains Mono', 'Space Grotesk', monospace",
+      fontWeight: 500,
+      letterSpacing: '0.06em',
+      color: '#33ff88',
+    },
+  },
+  {
+    value: 'brush',
+    label: 'BRUSH',
+    preview: {
+      fontFamily: "'Caveat', cursive",
+      fontWeight: 700,
+      letterSpacing: '0.01em',
+      color: '#e8d5c0',
+    },
+  },
+  {
+    value: 'stencil',
+    label: 'STNCL',
+    preview: {
+      fontFamily: "'Oswald', sans-serif",
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '0.14em',
+      color: '#8b7355',
+    },
+  },
+  {
+    value: 'pixel',
+    label: 'PIXEL',
+    preview: {
+      fontFamily: "'Space Grotesk', sans-serif",
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      backgroundImage: 'linear-gradient(135deg, #ff6bcb, #a855f7)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'deco',
+    label: 'DECO',
+    preview: {
+      fontFamily: "'Cormorant Garamond', serif",
+      fontWeight: 600,
+      letterSpacing: '0.18em',
+      textTransform: 'uppercase',
+      backgroundImage: 'linear-gradient(160deg, #d4a850, #f5e6a0)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'noir',
+    label: 'NOIR',
+    preview: {
+      fontFamily: "'Space Grotesk', sans-serif",
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '0.08em',
+      backgroundImage: 'linear-gradient(180deg, #ffffff, #555555)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+];
+
+// ── GFX tab: elegant, lofi, pop, retro3d, emboss, glitch ────────────────────
+const GFX_PRESETS: PresetDef[] = [
   {
     value: 'elegant',
     label: 'Elegant',
@@ -111,24 +191,222 @@ const FONT_PRESETS: PresetDef[] = [
   },
 ];
 
-export default function TitleCustomPanel() {
+// ── VFX tab: neon, graffiti, vapor, chrome, dark, ice ────────────────────────
+const VFX_PRESETS: PresetDef[] = [
+  {
+    value: 'neon',
+    label: 'HEAT',
+    preview: {
+      fontFamily: "'Space Grotesk', sans-serif",
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '0.05em',
+      backgroundImage: 'linear-gradient(160deg, #fff1a0, #ff5500)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'graffiti',
+    label: 'GRAFT',
+    preview: {
+      fontFamily: "'Permanent Marker', cursive",
+      fontWeight: 400,
+      letterSpacing: '0.03em',
+      backgroundImage: 'linear-gradient(135deg, #ff6b35, #f7c59f)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'vapor',
+    label: 'VAPOR',
+    preview: {
+      fontFamily: "'Cormorant Garamond', serif",
+      fontStyle: 'italic',
+      fontWeight: 300,
+      letterSpacing: '0.12em',
+      backgroundImage: 'linear-gradient(135deg, #ffb3d9, #c084fc, #818cf8)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'chrome',
+    label: 'SCRIPT',
+    preview: {
+      fontFamily: "'Dancing Script', cursive",
+      fontWeight: 700,
+      letterSpacing: '0.02em',
+      backgroundImage: 'linear-gradient(160deg, #fffbe8, #d4b870)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'dark',
+    label: '한글',
+    preview: {
+      fontFamily: "'Pretendard Variable', 'Pretendard', sans-serif",
+      fontWeight: 800,
+      letterSpacing: '-0.02em',
+      backgroundImage: 'linear-gradient(160deg, #ffffff, #aaaaaa)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'ice',
+    label: 'WIRE',
+    preview: {
+      fontFamily: "'Space Grotesk', sans-serif",
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '0.10em',
+      WebkitTextStroke: '1px rgba(255,255,255,0.82)',
+      WebkitTextFillColor: 'transparent',
+      color: 'transparent',
+    },
+  },
+];
+
+// ── EQ&PL tab: pastel, brutalist, glass, woodcut, comic, minimal ────────────
+const EQPL_PRESETS: PresetDef[] = [
+  {
+    value: 'pastel',
+    label: 'PSTL',
+    preview: {
+      fontFamily: "'Cormorant Garamond', serif",
+      fontStyle: 'italic',
+      fontWeight: 300,
+      letterSpacing: '0.08em',
+      backgroundImage: 'linear-gradient(135deg, #fbc2eb, #a6c1ee)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'brutalist',
+    label: 'BRUT',
+    preview: {
+      fontFamily: "'Oswald', sans-serif",
+      fontWeight: 900,
+      textTransform: 'uppercase',
+      letterSpacing: '0.02em',
+      color: '#e63946',
+    },
+  },
+  {
+    value: 'glass',
+    label: 'GLASS',
+    preview: {
+      fontFamily: "'Space Grotesk', sans-serif",
+      fontWeight: 400,
+      letterSpacing: '0.10em',
+      textTransform: 'uppercase',
+      color: 'rgba(255,255,255,0.45)',
+    },
+  },
+  {
+    value: 'woodcut',
+    label: 'WOOD',
+    preview: {
+      fontFamily: "'Permanent Marker', cursive",
+      fontWeight: 400,
+      letterSpacing: '0.02em',
+      color: '#8b5e3c',
+    },
+  },
+  {
+    value: 'comic',
+    label: 'COMIC',
+    preview: {
+      fontFamily: "'Caveat', cursive",
+      fontWeight: 700,
+      backgroundImage: 'linear-gradient(135deg, #ffe066, #ff6b35)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+      color: 'transparent',
+    },
+  },
+  {
+    value: 'minimal',
+    label: 'THIN',
+    preview: {
+      fontFamily: "'Space Grotesk', sans-serif",
+      fontWeight: 200,
+      letterSpacing: '0.20em',
+      textTransform: 'uppercase',
+      color: 'rgba(255,255,255,0.7)',
+    },
+  },
+];
+
+// ── Group → preset map ──────────────────────────────────────────────────────
+type PresetGroup = 'pr' | 'gfx' | 'vfx' | 'eqpl';
+
+const GROUP_PRESETS: Record<PresetGroup, PresetDef[]> = {
+  pr:   PR_PRESETS,
+  gfx:  GFX_PRESETS,
+  vfx:  VFX_PRESETS,
+  eqpl: EQPL_PRESETS,
+};
+
+const PRESETS_3D: { value: CodaStore['title3DPreset']; label: string; color: string }[] = [
+  { value: 'gold',   label: 'GOLD',   color: '#d4a850' },
+  { value: 'silver', label: 'SILVER', color: '#c0c0c0' },
+  { value: 'chrome', label: 'CHROME', color: '#e8e8e8' },
+  { value: 'neon',   label: 'NEON',   color: '#00e5ff' },
+  { value: 'fire',   label: 'FIRE',   color: '#ff5500' },
+  { value: 'ice',    label: 'ICE',    color: '#67e8f9' },
+  { value: 'dark',   label: 'DARK',   color: '#444444' },
+];
+
+const ANIM_3D: { value: CodaStore['title3DAnimate']; label: string }[] = [
+  { value: 'breathing', label: 'PULSE' },
+  { value: 'float',     label: 'FLOAT' },
+  { value: 'static',    label: 'STATIC' },
+];
+
+export default function TitleCustomPanel({ group = 'gfx' }: { group?: PresetGroup }) {
   const titleText          = useCodaStore((s) => s.titleText);
   const titleMode          = useCodaStore((s) => s.titleMode);
   const titleFontPreset    = useCodaStore((s) => s.titleFontPreset);
   const titleSubtext       = useCodaStore((s) => s.titleSubtext);
   const titlePlayMode      = useCodaStore((s) => s.titlePlayMode);
+  const titleRender3D      = useCodaStore((s) => s.titleRender3D);
+  const title3DPreset      = useCodaStore((s) => s.title3DPreset);
+  const title3DAnimate     = useCodaStore((s) => s.title3DAnimate);
   const setTitleText       = useCodaStore((s) => s.setTitleText);
   const setTitleMode       = useCodaStore((s) => s.setTitleMode);
   const setTitlePlayMode   = useCodaStore((s) => s.setTitlePlayMode);
   const setTitleFontPreset = useCodaStore((s) => s.setTitleFontPreset);
+  const titleFontScale     = useCodaStore((s) => s.titleFontScale);
   const setTitleSubtext    = useCodaStore((s) => s.setTitleSubtext);
+  const setTitleFontScale  = useCodaStore((s) => s.setTitleFontScale);
+  const setTitleRender3D   = useCodaStore((s) => s.setTitleRender3D);
+  const setTitle3DPreset   = useCodaStore((s) => s.setTitle3DPreset);
+  const setTitle3DAnimate  = useCodaStore((s) => s.setTitle3DAnimate);
 
   return (
     <div className="px-3 py-2 flex flex-col gap-2">
 
       {/* Row 1: 6 font preset buttons */}
       <div className="flex gap-1">
-        {FONT_PRESETS.map((fp) => {
+        {GROUP_PRESETS[group].map((fp) => {
           const active = titleFontPreset === fp.value;
           return (
             <button
@@ -221,8 +499,72 @@ export default function TitleCustomPanel() {
                 </button>
               ))}
             </div>
+            <div className="flex items-center gap-1 border-l border-cream-300 pl-1.5">
+              <span className="text-[8px] text-ink-400 label-caps">SIZE</span>
+              <input
+                type="range"
+                min={0.3}
+                max={2.5}
+                step={0.05}
+                value={titleFontScale}
+                onChange={(e) => setTitleFontScale(Number(e.target.value))}
+                className="w-14 accent-ink-900 h-3"
+              />
+              <span className="text-[8px] text-ink-500 tabular-nums w-6 text-right">
+                {Math.round(titleFontScale * 100)}%
+              </span>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Row 3: 3D render toggle + 3D presets */}
+      <div className="flex items-center gap-2 mt-1 border-t border-cream-300 pt-2">
+        <button
+          onClick={() => setTitleRender3D(!titleRender3D)}
+          className={`px-2 py-1 text-[9px] label-caps border transition-colors ${
+            titleRender3D
+              ? 'bg-ink-900 text-cream-100 border-ink-900'
+              : 'text-ink-500 border-cream-300 hover:border-ink-500'
+          }`}
+        >
+          3D
+        </button>
+
+        {titleRender3D && (
+          <>
+            <div className="flex gap-0.5">
+              {PRESETS_3D.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => setTitle3DPreset(p.value)}
+                  title={p.label}
+                  className={`w-5 h-5 border transition-colors ${
+                    title3DPreset === p.value
+                      ? 'border-ink-900 ring-1 ring-ink-900'
+                      : 'border-cream-300 hover:border-ink-400'
+                  }`}
+                  style={{ backgroundColor: p.color }}
+                />
+              ))}
+            </div>
+            <div className="flex gap-0 border-l border-cream-300 pl-1.5">
+              {ANIM_3D.map((a) => (
+                <button
+                  key={a.value}
+                  onClick={() => setTitle3DAnimate(a.value)}
+                  className={`px-1.5 py-0.5 text-[8px] label-caps border transition-colors ${
+                    title3DAnimate === a.value
+                      ? 'bg-ink-900 text-cream-100 border-ink-900'
+                      : 'text-ink-500 border-cream-300 hover:text-ink-900 hover:border-ink-500'
+                  }`}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
     </div>

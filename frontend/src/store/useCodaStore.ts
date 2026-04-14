@@ -134,8 +134,14 @@ export interface CodaStore {
   titlePlayMode: 'loop' | 'once' | 'stay';
   titleText: string;
   titleFontPreset: 'elegant' | 'lofi' | 'pop' | 'retro3d' | 'emboss' | 'glitch'
-                 | 'neon' | 'graffiti' | 'vapor' | 'chrome' | 'dark' | 'ice';
+                 | 'neon' | 'graffiti' | 'vapor' | 'chrome' | 'dark' | 'ice'
+                 | 'mono' | 'brush' | 'stencil' | 'pixel' | 'deco' | 'noir'
+                 | 'pastel' | 'brutalist' | 'glass' | 'woodcut' | 'comic' | 'minimal';
   titleSubtext: string;
+  titleFontScale: number;  // 0.5–2.0, default 1.0
+  titleRender3D: boolean;
+  title3DPreset: 'gold' | 'silver' | 'chrome' | 'neon' | 'fire' | 'ice' | 'dark';
+  title3DAnimate: 'breathing' | 'float' | 'static';
 
   // Lyric style
   lyricFontPreset: 'clean' | 'mist' | 'slab' | 'glow' | 'outline' | 'kr';
@@ -228,6 +234,10 @@ export interface CodaStore {
   setTitleText: (text: string) => void;
   setTitleFontPreset: (p: CodaStore['titleFontPreset']) => void;
   setTitleSubtext: (t: string) => void;
+  setTitleFontScale: (s: number) => void;
+  setTitleRender3D: (v: boolean) => void;
+  setTitle3DPreset: (p: CodaStore['title3DPreset']) => void;
+  setTitle3DAnimate: (a: CodaStore['title3DAnimate']) => void;
 
   setLyricFontPreset: (p: CodaStore['lyricFontPreset']) => void;
   setLyricPosition: (pos: CodaStore['lyricPosition']) => void;
@@ -366,6 +376,10 @@ export const useCodaStore = create<CodaStore>()(
     titleText: 'Coda Studio',
     titleFontPreset: 'elegant',
     titleSubtext: '',
+    titleFontScale: 1.0,
+    titleRender3D: false,
+    title3DPreset: 'gold' as const,
+    title3DAnimate: 'breathing' as const,
 
     lyricFontPreset: 'clean',
     lyricPosition: 'bottom' as const,
@@ -622,6 +636,14 @@ export const useCodaStore = create<CodaStore>()(
 
     setTitleSubtext: (t) =>
       set((state) => { state.titleSubtext = t; }),
+    setTitleFontScale: (s) =>
+      set((state) => { state.titleFontScale = Math.max(0.3, Math.min(2.5, s)); }),
+    setTitleRender3D: (v) =>
+      set((state) => { state.titleRender3D = v; }),
+    setTitle3DPreset: (p) =>
+      set((state) => { state.title3DPreset = p; }),
+    setTitle3DAnimate: (a) =>
+      set((state) => { state.title3DAnimate = a; }),
 
     setLyricFontPreset: (p) =>
       set((state) => { state.lyricFontPreset = p; }),
@@ -774,6 +796,40 @@ export const useCodaStore = create<CodaStore>()(
       set((state) => { state.eqMirror = v; }),
   }))
 );
+
+// ── Scene-time mapping ──────────────────────────────────────────────────────
+
+export interface SceneTimeInfo {
+  sceneId: string;
+  localTime: number;   // time within the scene (0-based)
+  sceneStart: number;  // absolute start of this scene
+}
+
+/**
+ * Walk ordered scenes and return which scene owns absolute time `t`.
+ * Scenes are stacked sequentially by durationSec.
+ * Falls back to last scene if t exceeds total duration.
+ */
+export function getSceneAtTime(scenes: Scene[], t: number): SceneTimeInfo | null {
+  if (scenes.length === 0) return null;
+  const sorted = [...scenes].sort((a, b) => a.order - b.order);
+  let cursor = 0;
+  for (const scene of sorted) {
+    const dur = scene.durationSec || 0;
+    if (t < cursor + dur) {
+      return { sceneId: scene.id, localTime: t - cursor, sceneStart: cursor };
+    }
+    cursor += dur;
+  }
+  // Past end → clamp to last scene
+  const last = sorted[sorted.length - 1];
+  return { sceneId: last.id, localTime: t - (cursor - (last.durationSec || 0)), sceneStart: cursor - (last.durationSec || 0) };
+}
+
+/** Total duration of all scenes combined. */
+export function getTotalSceneDuration(scenes: Scene[]): number {
+  return scenes.reduce((sum, s) => sum + (s.durationSec || 0), 0);
+}
 
 // ── localStorage auto-persistence ────────────────────────────────────────────
 const LS_KEY = 'coda-studio-v1';

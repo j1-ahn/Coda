@@ -40,7 +40,7 @@ const DEFAULTS: AppSettings = {
   nvencMode:            'auto',
   ffmpegPath:           '',
   whisperModel:         'large-v3',
-  ollamaModel:          'gemma3:4b',
+  ollamaModel:          'gemma4:e4b',
   backendUrl:           '',
   eqDefaultSensitivity: 1.0,
 };

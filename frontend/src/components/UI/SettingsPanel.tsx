@@ -6,7 +6,7 @@
  * All settings persist automatically to localStorage via useSettingsStore.
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useSettingsStore, AppSettings } from '@/store/useSettingsStore';
 
 // ── Gear icon ─────────────────────────────────────────────────────────────────
@@ -184,27 +184,25 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
 
           </Section>
 
-          {/* ── EQ ───────────────────────────────────────────────────────── */}
-          <Section title="이퀄라이저">
+          {/* ── LLM (Ollama) ──────────────────────────────────────────── */}
+          <Section title="LLM (Ollama)">
 
             <SettingRow
-              label="기본 감도"
-              description="EQ 비주얼라이저가 음악에 얼마나 격렬하게 반응하는지 결정합니다. 새 트랙 추가 시 이 값이 기본으로 적용됩니다. (현재 트랙은 EQ 패널에서 개별 조정)"
+              label="Ollama 모델"
+              description="PR 탭(프롬프트 생성) 및 오디오 분석에 사용할 Ollama 모델입니다. gemma3:4b 권장. 로컬에 설치된 모델명을 입력하세요."
             >
-              <div className="flex items-center gap-2 flex-1">
-                <input
-                  type="range"
-                  min={0.1}
-                  max={3.0}
-                  step={0.1}
-                  value={store.eqDefaultSensitivity}
-                  onChange={(e) => set('eqDefaultSensitivity', Number(e.target.value))}
-                  className="flex-1 accent-ink-900"
-                />
-                <span className="text-[10px] text-ink-500 tabular-nums w-8 text-right">
-                  {store.eqDefaultSensitivity.toFixed(1)}
-                </span>
-              </div>
+              <TextInput
+                value={store.ollamaModel}
+                placeholder="gemma3:4b"
+                onChange={(v) => set('ollamaModel', v)}
+              />
+            </SettingRow>
+
+            <SettingRow
+              label="서버 상태"
+              description="Ollama 서버 연결 상태를 확인합니다. 연결 실패 시 터미널에서 'ollama serve'를 실행하세요."
+            >
+              <OllamaHealthCheck />
             </SettingRow>
 
           </Section>
@@ -216,7 +214,6 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
               {[
                 '프로젝트 기본 템플릿 — 새 프로젝트 생성 시 VFX·타이틀 프리셋 자동 적용',
                 '단축키 커스텀 — TAP 모드 키 재매핑 (현재: [ ] space)',
-                'Ollama 모델 — 가사 자동생성·씬 설명·타이틀 제안 (LLM 기능 구현 후 활성화)',
                 '씬 타임라인 — 다중 씬 구간 편집',
                 '플레이리스트 연속 렌더 — 전체 앨범 단일 영상 출력',
               ].map((item) => (
@@ -248,6 +245,55 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
         </div>
 
       </div>
+    </div>
+  );
+}
+
+// ── Ollama health check ──────────────────────────────────────────────────────
+
+function OllamaHealthCheck() {
+  const [status, setStatus] = useState<'idle' | 'checking' | 'ok' | 'fail'>('idle');
+  const [model, setModel] = useState('');
+  const backendUrl = useSettingsStore((s) => s.backendUrl);
+
+  const check = useCallback(async () => {
+    setStatus('checking');
+    try {
+      const base = backendUrl || '';
+      const res = await fetch(`${base}/api/ollama/health`, { signal: AbortSignal.timeout(8000) });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        setStatus('ok');
+        setModel(data.model || '');
+      } else {
+        setStatus('fail');
+      }
+    } catch {
+      setStatus('fail');
+    }
+  }, [backendUrl]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={check}
+        disabled={status === 'checking'}
+        className={`px-2.5 py-1 text-[9px] label-caps border transition-colors ${
+          status === 'checking'
+            ? 'bg-cream-200 text-ink-300 border-cream-300 cursor-wait'
+            : 'border-cream-300 text-ink-500 hover:border-ink-500 hover:text-ink-900'
+        }`}
+      >
+        {status === 'checking' ? '확인 중…' : '연결 테스트'}
+      </button>
+      {status === 'ok' && (
+        <span className="text-[9px] text-green-600 font-medium">
+          연결됨 {model && `(${model})`}
+        </span>
+      )}
+      {status === 'fail' && (
+        <span className="text-[9px] text-red-500 font-medium">연결 실패</span>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useCodaStore, hydrateFromLocalStorage, saveToLocalStorage } from '@/store/useCodaStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 
+import PromptPanel from '@/components/UI/PromptPanel';
 import UploadPanel from '@/components/UI/UploadPanel';
 import GraphicsPanel from '@/components/UI/GraphicsPanel';
 import WhisperSyncPanel from '@/components/UI/WhisperSyncPanel';
@@ -12,7 +13,6 @@ import SubtitleEditor from '@/components/UI/SubtitleEditor';
 import VFXPanel from '@/components/UI/VFXPanel';
 import LoopPanel from '@/components/UI/LoopPanel';
 import TitleCustomPanel from '@/components/UI/TitleCustomPanel';
-import EQFontPanel from '@/components/UI/EQFontPanel';
 import LyricFontPanel from '@/components/UI/LyricFontPanel';
 import EqualizerTab from '@/components/Equalizer/EqualizerTab';
 import CanvasSceneInfoBar from '@/components/UI/CanvasSceneInfoBar';
@@ -52,9 +52,10 @@ function SceneLoading() {
 // Tab definition
 // ---------------------------------------------------------------------------
 
-type TabId = 'GRAPHICS' | 'VFX/LOOP' | 'EQ & VFX' | 'LYRIC';
+type TabId = 'PROMPT' | 'GRAPHICS' | 'VFX/LOOP' | 'EQ & VFX' | 'LYRIC';
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: 'PROMPT',   label: 'PR'    },
   { id: 'GRAPHICS', label: 'GFX'   },
   { id: 'VFX/LOOP', label: 'VFX'   },
   { id: 'EQ & VFX', label: 'EQ&PL' },
@@ -433,14 +434,24 @@ export default function Home() {
           </div>
 
           {/* Title / EQ font panel — footer 위에 고정 */}
-          {!previewMode && (activeTab === 'GRAPHICS' || activeTab === 'VFX/LOOP') && (
+          {!previewMode && activeTab === 'PROMPT' && (
             <div className="shrink-0 border-t border-cream-300 bg-cream-100">
-              <TitleCustomPanel />
+              <TitleCustomPanel group="pr" />
+            </div>
+          )}
+          {!previewMode && activeTab === 'GRAPHICS' && (
+            <div className="shrink-0 border-t border-cream-300 bg-cream-100">
+              <TitleCustomPanel group="gfx" />
+            </div>
+          )}
+          {!previewMode && activeTab === 'VFX/LOOP' && (
+            <div className="shrink-0 border-t border-cream-300 bg-cream-100">
+              <TitleCustomPanel group="vfx" />
             </div>
           )}
           {!previewMode && activeTab === 'EQ & VFX' && (
             <div className="shrink-0 border-t border-cream-300 bg-cream-100">
-              <EQFontPanel />
+              <TitleCustomPanel group="eqpl" />
             </div>
           )}
           {!previewMode && activeTab === 'LYRIC' && (
@@ -475,6 +486,7 @@ export default function Home() {
 
           {/* Tab content */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {activeTab === 'PROMPT'   && <PromptPanel />}
             {activeTab === 'GRAPHICS' && <GraphicsTab />}
             {activeTab === 'VFX/LOOP' && <VFXLoopTab />}
             {activeTab === 'EQ & VFX' && <EQTab />}

@@ -178,6 +178,50 @@ def _run_with_progress(
         on_progress(1.0)
 
 
+def concat_videos(
+    video_paths: list[Path],
+    output_path: Path,
+    ffmpeg_path: str | None = None,
+    on_progress: Callable[[float], None] | None = None,
+) -> None:
+    """
+    Concatenate multiple MP4 videos (same codec/resolution) into one.
+    Uses FFmpeg demuxer concat protocol.
+    """
+    if not video_paths:
+        raise ValueError("No videos to concatenate")
+    if len(video_paths) == 1:
+        import shutil
+        shutil.copy2(video_paths[0], output_path)
+        if on_progress:
+            on_progress(1.0)
+        return
+
+    ffmpeg_bin = ffmpeg_path or "ffmpeg"
+
+    # Write concat list file
+    list_path = output_path.parent / "concat_list.txt"
+    with open(list_path, "w", encoding="utf-8") as f:
+        for vp in video_paths:
+            f.write(f"file '{vp.resolve()}'\n")
+
+    total_frames = sum(_probe_frame_count(vp) for vp in video_paths)
+
+    cmd = [
+        ffmpeg_bin, "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", str(list_path),
+        "-c", "copy",
+        "-movflags", "+faststart",
+        str(output_path),
+    ]
+
+    _run_with_progress(cmd, total_frames, on_progress)
+
+    # Cleanup list file
+    list_path.unlink(missing_ok=True)
+
+
 def _probe_frame_count(video_path: Path) -> int:
     """Return approximate frame count via ffprobe."""
     try:

@@ -13,14 +13,16 @@ from app.api.export_router import router as export_router
 from app.api.depth_router import router as depth_router
 from app.api.project_router import router as project_router
 from app.api.render_router import router as render_router
+from app.api.audio_analysis_router import router as audio_analysis_router
 
 # 루트 API 라우터
 api_router = APIRouter()
 
-api_router.include_router(whisper_router)   # /api/whisper
-api_router.include_router(ollama_router)    # /api/ollama
-api_router.include_router(vision_router)    # /api/vision
-api_router.include_router(export_router)    # /api/export
-api_router.include_router(depth_router)     # /api/depth
-api_router.include_router(project_router)   # /api/project
-api_router.include_router(render_router)    # /api/render
+api_router.include_router(whisper_router)          # /api/whisper
+api_router.include_router(ollama_router)           # /api/ollama
+api_router.include_router(vision_router)           # /api/vision
+api_router.include_router(export_router)           # /api/export
+api_router.include_router(depth_router)            # /api/depth
+api_router.include_router(project_router)          # /api/project
+api_router.include_router(render_router)           # /api/render
+api_router.include_router(audio_analysis_router)   # /api/audio-analysis

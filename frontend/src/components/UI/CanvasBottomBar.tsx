@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useCodaStore } from '@/store/useCodaStore';
+import { useCodaStore, getSceneAtTime } from '@/store/useCodaStore';
 import { eqAnalyserRef } from '@/lib/eqAnalyserRef';
 
 // ---------------------------------------------------------------------------
@@ -45,6 +45,8 @@ export default function CanvasBottomBar() {
   const setPlaybackTime     = useCodaStore((s) => s.setPlaybackTime);
   const addAudioTrack       = useCodaStore((s) => s.addAudioTrack);
   const scenes              = useCodaStore((s) => s.scenes);
+  const activeSceneId       = useCodaStore((s) => s.activeSceneId);
+  const setActiveScene      = useCodaStore((s) => s.setActiveScene);
   const previewMode         = useCodaStore((s) => s.previewMode);
   const setPreviewMode      = useCodaStore((s) => s.setPreviewMode);
 
@@ -78,7 +80,17 @@ export default function CanvasBottomBar() {
     const audio = audioRef.current;
     audio.volume = volume;
 
-    const onTime  = () => { setCurrentTime(audio.currentTime); setPlaybackTime(audio.currentTime); };
+    const onTime  = () => {
+      const t = audio.currentTime;
+      setCurrentTime(t);
+      setPlaybackTime(t);
+      // Auto-switch active scene based on playback time
+      const st = useCodaStore.getState();
+      const info = getSceneAtTime(st.scenes, t);
+      if (info && info.sceneId !== st.activeSceneId) {
+        st.setActiveScene(info.sceneId);
+      }
+    };
     const onMeta  = () => setDuration(audio.duration);
     const onPlay  = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
@@ -245,6 +257,12 @@ export default function CanvasBottomBar() {
     if (audioRef.current) audioRef.current.currentTime = t;
     setCurrentTime(t);
     setPlaybackTime(t);
+    // Switch scene on seek
+    const st = useCodaStore.getState();
+    const info = getSceneAtTime(st.scenes, t);
+    if (info && info.sceneId !== st.activeSceneId) {
+      st.setActiveScene(info.sceneId);
+    }
   };
 
   // ── File drop / browse → add to store & auto-select ──────────────────────
@@ -300,6 +318,31 @@ export default function CanvasBottomBar() {
       <div className="h-8 bg-cream-200 overflow-hidden">
         <canvas ref={waveCanvasRef} className="w-full h-full" width={800} height={32} />
       </div>
+
+      {/* Scene timeline bar */}
+      {scenes.length > 1 && totalSceneDur > 0 && (
+        <SceneTimelineBar
+          scenes={scenes}
+          activeSceneId={activeSceneId}
+          totalDuration={totalSceneDur}
+          currentTime={currentTime}
+          onClickScene={(sceneId) => {
+            setActiveScene(sceneId);
+            // Seek audio to scene start
+            const sorted = [...scenes].sort((a, b) => a.order - b.order);
+            let cursor = 0;
+            for (const sc of sorted) {
+              if (sc.id === sceneId) break;
+              cursor += sc.durationSec || 0;
+            }
+            if (audioRef.current) {
+              audioRef.current.currentTime = cursor;
+              setCurrentTime(cursor);
+              setPlaybackTime(cursor);
+            }
+          }}
+        />
+      )}
 
       {/* File drop row */}
       <div className="flex items-center gap-2 px-3 py-1 border-t border-cream-300 bg-cream-100">
@@ -402,6 +445,64 @@ export default function CanvasBottomBar() {
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Scene Timeline Bar
+// ---------------------------------------------------------------------------
+
+const SCENE_COLORS = [
+  'bg-ink-900', 'bg-ink-700', 'bg-ink-500', 'bg-ink-400',
+  'bg-amber-700', 'bg-emerald-700', 'bg-blue-700', 'bg-rose-700',
+];
+
+import type { Scene } from '@/store/useCodaStore';
+
+function SceneTimelineBar({
+  scenes,
+  activeSceneId,
+  totalDuration,
+  currentTime,
+  onClickScene,
+}: {
+  scenes: Scene[];
+  activeSceneId: string | null;
+  totalDuration: number;
+  currentTime: number;
+  onClickScene: (sceneId: string) => void;
+}) {
+  const sorted = [...scenes].sort((a, b) => a.order - b.order);
+  const playheadPct = totalDuration > 0 ? Math.min((currentTime / totalDuration) * 100, 100) : 0;
+
+  return (
+    <div className="relative h-5 flex items-stretch border-t border-cream-300 bg-cream-200">
+      {sorted.map((scene, idx) => {
+        const pct = totalDuration > 0 ? ((scene.durationSec || 0) / totalDuration) * 100 : 0;
+        if (pct <= 0) return null;
+        const isActive = scene.id === activeSceneId;
+        const colorClass = SCENE_COLORS[idx % SCENE_COLORS.length];
+        return (
+          <button
+            key={scene.id}
+            onClick={() => onClickScene(scene.id)}
+            className={`relative flex items-center justify-center text-[8px] label-caps transition-opacity
+              ${isActive ? 'opacity-100' : 'opacity-50 hover:opacity-80'}
+              ${colorClass} text-cream-100
+              ${idx > 0 ? 'border-l border-cream-300' : ''}`}
+            style={{ width: `${pct}%` }}
+            title={`Scene ${idx + 1} — ${(scene.durationSec || 0).toFixed(1)}s`}
+          >
+            S{idx + 1}
+          </button>
+        );
+      })}
+      {/* Playhead indicator */}
+      <div
+        className="absolute top-0 bottom-0 w-px bg-red-500 pointer-events-none z-10"
+        style={{ left: `${playheadPct}%` }}
+      />
     </div>
   );
 }

@@ -15,6 +15,7 @@
  */
 
 import { useCodaStore } from '@/store/useCodaStore';
+import { getSceneAtTime } from '@/store/useCodaStore';
 import {
   paintLyricOverlay,
   paintTitleOverlay,
@@ -128,11 +129,25 @@ export class FrameDumper {
     const totalFrames = Math.ceil(durationSec * fps);
     let batch: FrameBatch['frames'] = [];
 
+    let prevSceneId: string | null = null;
+
     for (let i = 0; i < totalFrames; i++) {
       if (abortSignal?.aborted) break;
 
       const t = i / fps;
-      useCodaStore.getState().setPlaybackTime(t);
+
+      // Switch active scene based on cumulative time
+      const store = useCodaStore.getState();
+      const info = getSceneAtTime(store.scenes, t);
+      if (info && info.sceneId !== prevSceneId) {
+        store.setActiveScene(info.sceneId);
+        prevSceneId = info.sceneId;
+        // Extra RAF for texture load + transition snapshot
+        await raf();
+        await raf();
+      }
+
+      store.setPlaybackTime(t);
 
       // Let Three.js re-render
       await raf();

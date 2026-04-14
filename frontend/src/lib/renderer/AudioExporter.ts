@@ -40,3 +40,49 @@ export async function exportActiveAudio(): Promise<AudioExportResult> {
     durationSec: track.durationSec,
   };
 }
+
+/**
+ * Fetch a specific audio track by ID and return it as a Blob.
+ */
+export async function exportAudioTrack(trackId: string): Promise<AudioExportResult> {
+  const state = useCodaStore.getState();
+  const track = state.audioTracks.find((t) => t.id === trackId);
+
+  if (!track?.url) {
+    throw new Error(`Audio track ${trackId} not found or has no URL.`);
+  }
+
+  const res = await fetch(track.url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch audio: HTTP ${res.status}`);
+  }
+
+  const blob = await res.blob();
+  return {
+    blob,
+    fileName: track.fileName || 'audio.mp3',
+    durationSec: track.durationSec,
+  };
+}
+
+/**
+ * Return all audio tracks in playlist order, each as a Blob.
+ */
+export async function exportAllAudioTracks(): Promise<AudioExportResult[]> {
+  const state = useCodaStore.getState();
+  const results: AudioExportResult[] = [];
+
+  for (const track of state.audioTracks) {
+    if (!track.url) continue;
+    const res = await fetch(track.url);
+    if (!res.ok) continue;
+    const blob = await res.blob();
+    results.push({
+      blob,
+      fileName: track.fileName || 'audio.mp3',
+      durationSec: track.durationSec,
+    });
+  }
+
+  return results;
+}
