@@ -127,10 +127,12 @@ function TranscribeProgress({
           return;
         }
 
-        // 완료 상태
+        // 완료 상태 — progress만 100%로 올리고 "완료" 표시는 하지 않음.
+        // 실제 완료 처리(세그먼트 저장)는 handleSTT fetch 응답에서 하므로
+        // 컴포넌트가 언마운트될 때까지 "인식 중…" 상태 유지.
         if (data.done) {
           setProgress(1);
-          setPhase('done');
+          // phase는 'transcribing' 유지 (사용자에게 완료 오인 방지)
           onDone();
           return;
         }

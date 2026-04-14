@@ -182,6 +182,7 @@ export interface CodaStore {
   // Scene
   addScene: () => void;
   removeScene: (id: string) => void;
+  clearAllScenes: () => void;
   setActiveScene: (id: string) => void;
   updateSceneBackground: (sceneId: string, background: Scene['background']) => void;
   updateSceneDuration: (sceneId: string, durationSec: number) => void;
@@ -417,6 +418,13 @@ export const useCodaStore = create<CodaStore>()(
         if (state.activeSceneId === id) {
           state.activeSceneId = state.scenes[Math.max(0, idx - 1)]?.id ?? null;
         }
+      }),
+
+    clearAllScenes: () =>
+      set((state) => {
+        const fresh = makeDefaultScene(0);
+        state.scenes = [fresh];
+        state.activeSceneId = fresh.id;
       }),
 
     setActiveScene: (id) =>

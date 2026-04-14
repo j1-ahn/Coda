@@ -42,6 +42,7 @@ export default function GraphicsPanel() {
   const activeSceneId        = useCodaStore((s) => s.activeSceneId);
   const addScene             = useCodaStore((s) => s.addScene);
   const removeScene          = useCodaStore((s) => s.removeScene);
+  const clearAllScenes       = useCodaStore((s) => s.clearAllScenes);
   const setActiveScene       = useCodaStore((s) => s.setActiveScene);
   const updateSceneBackground = useCodaStore((s) => s.updateSceneBackground);
   const updateSceneTransition = useCodaStore((s) => s.updateSceneTransition);
@@ -67,12 +68,17 @@ export default function GraphicsPanel() {
   const pageStart   = clampedPage * SCENES_PER_PAGE;
   const visibleScenes = scenes.slice(pageStart, pageStart + SCENES_PER_PAGE);
 
-  // 클릭으로 선택한 씬이 다른 페이지에 있으면 해당 페이지로 이동
+  // activeSceneId가 바뀔 때만 해당 페이지로 이동
+  // (수동 페이지 전환은 건드리지 않음 — › ‹ 버튼이 덮어씌워지는 버그 방지)
+  const prevActiveIdRef = useRef(activeSceneId);
   useEffect(() => {
-    if (activeSceneGlobalIdx >= 0 && activePage !== clampedPage) {
-      setScenePage(activePage);
+    if (activeSceneId !== prevActiveIdRef.current) {
+      prevActiveIdRef.current = activeSceneId;
+      if (activeSceneGlobalIdx >= 0) {
+        setScenePage(activePage);
+      }
     }
-  }, [activeSceneGlobalIdx, activePage, clampedPage]);
+  }, [activeSceneId, activeSceneGlobalIdx, activePage]);
 
   // ── 다중 이미지 업로드 ───────────────────────────────────────────────────
   const handleMultiFiles = useCallback(
@@ -195,11 +201,17 @@ export default function GraphicsPanel() {
           <span className="label-caps text-[9px] text-ink-400">씬 ({scenes.length})</span>
 
           <div className="flex items-center gap-1">
-            {/* 페이지 < > — 씬이 5개 초과일 때만 표시 */}
+            {/* 페이지 ‹ › — 씬이 5개 초과일 때만 표시 */}
             {totalPages > 1 && (
               <>
                 <button
-                  onClick={() => setScenePage((p) => Math.max(0, p - 1))}
+                  onClick={() => {
+                    const newPage = Math.max(0, clampedPage - 1);
+                    setScenePage(newPage);
+                    // 이전 페이지의 첫 씬을 활성화 → 캔버스 전환
+                    const firstSceneOnPage = scenes[newPage * SCENES_PER_PAGE];
+                    if (firstSceneOnPage) setActiveScene(firstSceneOnPage.id);
+                  }}
                   disabled={clampedPage === 0}
                   className="w-4 h-4 flex items-center justify-center text-[9px] border border-cream-300
                     text-ink-400 hover:border-ink-500 hover:text-ink-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -210,7 +222,13 @@ export default function GraphicsPanel() {
                   {clampedPage + 1}/{totalPages}
                 </span>
                 <button
-                  onClick={() => setScenePage((p) => Math.min(totalPages - 1, p + 1))}
+                  onClick={() => {
+                    const newPage = Math.min(totalPages - 1, clampedPage + 1);
+                    setScenePage(newPage);
+                    // 다음 페이지의 첫 씬을 활성화 → 캔버스 전환
+                    const firstSceneOnPage = scenes[newPage * SCENES_PER_PAGE];
+                    if (firstSceneOnPage) setActiveScene(firstSceneOnPage.id);
+                  }}
                   disabled={clampedPage === totalPages - 1}
                   className="w-4 h-4 flex items-center justify-center text-[9px] border border-cream-300
                     text-ink-400 hover:border-ink-500 hover:text-ink-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -222,13 +240,25 @@ export default function GraphicsPanel() {
             <button
               onClick={() => {
                 addScene();
-                // 새 씬은 마지막에 추가 → 마지막 페이지로 이동
                 const newPage = Math.floor(scenes.length / SCENES_PER_PAGE);
                 setScenePage(newPage);
               }}
               className="label-caps text-[9px] text-ink-400 hover:text-ink-900 transition-colors ml-1"
             >
               + 씬 추가
+            </button>
+            {/* 전체 삭제 */}
+            <button
+              onClick={() => {
+                if (window.confirm(`씬 ${scenes.length}개를 모두 삭제하고 빈 씬 1개로 초기화합니다.`)) {
+                  clearAllScenes();
+                  setScenePage(0);
+                }
+              }}
+              className="label-caps text-[9px] text-ink-300 hover:text-red-500 transition-colors ml-0.5"
+              title="씬 전체 삭제"
+            >
+              전체삭제
             </button>
           </div>
         </div>

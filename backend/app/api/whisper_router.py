@@ -213,7 +213,7 @@ def _run_transcribe(job_id: str, tmp_path: str, language: Optional[str], model_n
                 language=language if language else None,
                 task="transcribe",
                 verbose=False,
-                no_speech_threshold=0.3,
+                no_speech_threshold=0.2,       # 0.3→0.2: 앞부분 묵음 오탐 감소
                 condition_on_previous_text=True,
                 compression_ratio_threshold=2.4,
             )
