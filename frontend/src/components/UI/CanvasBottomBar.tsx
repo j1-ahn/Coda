@@ -29,8 +29,9 @@ function avgRange(data: Uint8Array, from: number, to: number) {
 async function loadAudioDuration(url: string): Promise<number> {
   return new Promise((resolve) => {
     const a = new Audio(url);
-    a.addEventListener('loadedmetadata', () => resolve(a.duration));
-    a.addEventListener('error', () => resolve(0));
+    const cleanup = () => { a.src = ''; a.load(); };
+    a.addEventListener('loadedmetadata', () => { const d = a.duration; cleanup(); resolve(d); });
+    a.addEventListener('error', () => { cleanup(); resolve(0); });
   });
 }
 
@@ -73,6 +74,22 @@ export default function CanvasBottomBar() {
   const [duration, setDuration]       = useState(0);
   const [volume, setVolume]           = useState(0.8);
   const [dragOver, setDragOver]       = useState(false);
+
+  // Cleanup AudioContext + Audio element on unmount
+  useEffect(() => {
+    return () => {
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+        analyserRef.current = null;
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Create audio element once; attach event listeners
   useEffect(() => {

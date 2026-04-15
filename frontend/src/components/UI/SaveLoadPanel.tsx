@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useCodaStore, sanitizeForSave } from '@/store/useCodaStore';
+import ConfirmDialog from '@/components/UI/ConfirmDialog';
 
 const API = '';
 
@@ -24,6 +25,8 @@ export default function SaveLoadPanel() {
   const [loadOpen, setLoadOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [confirmDeletePid, setConfirmDeletePid] = useState<string | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -87,15 +90,20 @@ export default function SaveLoadPanel() {
       useCodaStore.setState(json.data, true);
       setLoadOpen(false);
     } catch {
-      alert('프로젝트를 불러오는 데 실패했습니다.');
+      setLoadError('프로젝트를 불러오는 데 실패했습니다.');
+      setTimeout(() => setLoadError(null), 3000);
     }
   };
 
   // ── Delete ────────────────────────────────────────────────────────────────
-  const handleDelete = async (pid: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    await fetch(`${API}/api/project/${pid}`, { method: 'DELETE' });
-    setProjects((prev) => prev.filter((p) => p.project_id !== pid));
+  const handleDelete = async (pid: string) => {
+    try {
+      await fetch(`${API}/api/project/${pid}`, { method: 'DELETE' });
+      setProjects((prev) => prev.filter((p) => p.project_id !== pid));
+    } catch {
+      // silently fail
+    }
+    setConfirmDeletePid(null);
   };
 
   const saveLabel =
@@ -155,8 +163,8 @@ export default function SaveLoadPanel() {
                 <span className="text-[10px] text-ink-300">{formatDate(p.saved_at)}</span>
               </div>
               <button
-                onClick={(e) => handleDelete(p.project_id, e)}
-                className="opacity-0 group-hover:opacity-100 text-ink-300 hover:text-ink-900 transition-all text-sm ml-2 shrink-0"
+                onClick={(e) => { e.stopPropagation(); setConfirmDeletePid(p.project_id); }}
+                className="opacity-0 group-hover:opacity-100 text-ink-300 hover:text-red-500 transition-all text-sm ml-2 shrink-0"
                 title="삭제"
               >
                 ×
@@ -164,11 +172,28 @@ export default function SaveLoadPanel() {
             </div>
           ))}
 
+          {loadError && (
+            <div className="px-3 py-2 text-[10px] text-red-600 bg-red-50 border-t border-red-200">
+              {loadError}
+            </div>
+          )}
+
           <div className="px-3 py-2 text-[9px] text-ink-300 label-caps">
             * 미디어 파일(이미지·오디오)은 재업로드 필요
           </div>
         </div>
       )}
+
+      {/* 프로젝트 삭제 확인 */}
+      <ConfirmDialog
+        open={confirmDeletePid !== null}
+        title="프로젝트 삭제"
+        message="이 프로젝트를 삭제하시겠습니까?\n삭제된 프로젝트는 복구할 수 없습니다."
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => { if (confirmDeletePid) handleDelete(confirmDeletePid); }}
+        onCancel={() => setConfirmDeletePid(null)}
+      />
 
     </div>
   );

@@ -434,6 +434,9 @@ export const useCodaStore = create<CodaStore>()(
       set((state) => {
         const idx = state.scenes.findIndex((s) => s.id === id);
         if (idx === -1) return;
+        // Revoke blob URL to prevent memory leak
+        const url = state.scenes[idx].background.url;
+        if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
         state.scenes.splice(idx, 1);
         // re-index order
         state.scenes.forEach((s, i) => { s.order = i; });
@@ -445,6 +448,12 @@ export const useCodaStore = create<CodaStore>()(
 
     clearAllScenes: () =>
       set((state) => {
+        // Revoke all blob URLs
+        for (const scene of state.scenes) {
+          if (scene.background.url?.startsWith('blob:')) {
+            URL.revokeObjectURL(scene.background.url);
+          }
+        }
         const fresh = makeDefaultScene(0);
         state.scenes = [fresh];
         state.activeSceneId = fresh.id;
@@ -456,7 +465,13 @@ export const useCodaStore = create<CodaStore>()(
     updateSceneBackground: (sceneId, background) =>
       set((state) => {
         const scene = state.scenes.find((s) => s.id === sceneId);
-        if (scene) scene.background = background;
+        if (!scene) return;
+        // Revoke old blob URL when replacing background
+        const oldUrl = scene.background.url;
+        if (oldUrl?.startsWith('blob:') && oldUrl !== background.url) {
+          URL.revokeObjectURL(oldUrl);
+        }
+        scene.background = background;
       }),
 
     updateSceneDuration: (sceneId, durationSec) =>
@@ -550,6 +565,9 @@ export const useCodaStore = create<CodaStore>()(
       set((state) => {
         const idx = state.audioTracks.findIndex((t) => t.id === id);
         if (idx === -1) return;
+        // Revoke blob URL
+        const url = state.audioTracks[idx].url;
+        if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
         state.audioTracks.splice(idx, 1);
         if (state.activeAudioTrackId === id) {
           state.activeAudioTrackId = state.audioTracks[0]?.id ?? null;
@@ -864,7 +882,15 @@ export function hydrateFromLocalStorage() {
       }
     }
 
-    useCodaStore.setState(saved);
+    // 안전한 머지: 현재 기본값 위에 저장된 데이터를 덮어씀
+    // → 새로 추가된 필드는 기본값 유지, 삭제된 필드는 무시
+    const currentDefaults = useCodaStore.getState() as unknown as Record<string, unknown>;
+    const merged: Record<string, unknown> = {};
+    for (const key of Object.keys(currentDefaults)) {
+      if (typeof currentDefaults[key] === 'function') continue;
+      merged[key] = key in saved ? saved[key] : currentDefaults[key];
+    }
+    useCodaStore.setState(merged);
   } catch {
     // corrupted data — ignore
   }

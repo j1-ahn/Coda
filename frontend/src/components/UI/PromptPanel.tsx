@@ -93,7 +93,12 @@ export default function PromptPanel() {
         method: 'POST',
         body: formData,
       });
-      if (!featRes.ok) throw new Error(`Feature extraction failed: HTTP ${featRes.status}`);
+      if (!featRes.ok) {
+        const msg = featRes.status === 413 ? '오디오 파일이 너무 큽니다 (최대 50MB)'
+          : featRes.status === 500 ? '백엔드 서버 오류 — 서버 로그를 확인하세요'
+          : `오디오 분석 실패 (${featRes.status})`;
+        throw new Error(msg);
+      }
       const featData = await featRes.json();
       const features: AudioFeatures = featData.features;
       setAudioFeatures(features);
@@ -114,7 +119,12 @@ export default function PromptPanel() {
           model: useSettingsStore.getState().ollamaModel || 'gemma4:e4b',
         }),
       });
-      if (!genRes.ok) throw new Error(`Prompt generation failed: HTTP ${genRes.status}`);
+      if (!genRes.ok) {
+        const msg = genRes.status === 500 ? 'AI 모델 응답 실패 — Ollama 서버를 확인하세요'
+          : genRes.status === 404 ? 'AI 모델을 찾을 수 없습니다 — 설정에서 모델명을 확인하세요'
+          : `프롬프트 생성 실패 (${genRes.status})`;
+        throw new Error(msg);
+      }
       const genData = await genRes.json();
       setResult({
         image_prompts: genData.image_prompts ?? [],

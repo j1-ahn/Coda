@@ -3,6 +3,7 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { useCodaStore } from '@/store/useCodaStore';
 import type { TransitionType } from '@/store/useCodaStore';
+import ConfirmDialog from '@/components/UI/ConfirmDialog';
 
 // ── 20가지 트랜지션 정의 ─────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ export default function GraphicsPanel() {
   const [dragSrcIdx,     setDragSrcIdx]     = useState<number | null>(null);
   const [scenePage,      setScenePage]      = useState(0);
   const [confirmClear,   setConfirmClear]   = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const SCENES_PER_PAGE = 5;
 
@@ -173,35 +175,26 @@ export default function GraphicsPanel() {
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto divide-y divide-cream-300">
 
       {/* ── 전체 삭제 확인 모달 ──────────────────────────────────────────── */}
-      {confirmClear && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-[#edeae3] border border-cream-300 shadow-lg w-64 p-5 flex flex-col gap-4">
-            <p className="text-[11px] text-ink-900 leading-relaxed">
-              씬 {scenes.length}개를 모두 삭제하고<br />빈 씬 1개로 초기화합니다.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  clearAllScenes();
-                  setScenePage(0);
-                  setConfirmClear(false);
-                }}
-                className="flex-1 py-1.5 label-caps text-[10px] bg-ink-900 text-cream-100 border border-ink-900
-                  hover:bg-ink-700 transition-colors"
-              >
-                삭제
-              </button>
-              <button
-                onClick={() => setConfirmClear(false)}
-                className="flex-1 py-1.5 label-caps text-[10px] border border-cream-300 text-ink-500
-                  hover:border-ink-500 hover:text-ink-900 transition-colors"
-              >
-                취소
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmClear}
+        title="전체 씬 삭제"
+        message={`씬 ${scenes.length}개를 모두 삭제하고\n빈 씬 1개로 초기화합니다.`}
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => { clearAllScenes(); setScenePage(0); setConfirmClear(false); }}
+        onCancel={() => setConfirmClear(false)}
+      />
+
+      {/* ── 단일 씬 삭제 확인 모달 ────────────────────────────────────────── */}
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="씬 삭제"
+        message="이 씬을 삭제하시겠습니까?\n삭제된 씬은 복구할 수 없습니다."
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => { if (confirmDeleteId) removeScene(confirmDeleteId); setConfirmDeleteId(null); }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
 
       {/* ── 1. 이미지 업로드 드롭존 ─────────────────────────────────────── */}
       <div className="p-3 shrink-0">
@@ -355,7 +348,7 @@ export default function GraphicsPanel() {
                   )}
                   {scenes.length > 1 && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); removeScene(scene.id); }}
+                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(scene.id); }}
                       className="w-5 h-5 flex items-center justify-center text-ink-300 hover:text-red-500 transition-colors text-sm leading-none"
                       title="씬 삭제"
                     >

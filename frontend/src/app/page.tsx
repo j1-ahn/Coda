@@ -24,6 +24,7 @@ import SceneTab from '@/components/Tabs/SceneTab';
 import STTSubtitleTab from '@/components/Tabs/STTSubtitleTab';
 
 import type { SidebarTabId } from '@/store/useCodaStore';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 
 const EQOverlayWidget = dynamic(
@@ -182,7 +183,9 @@ export default function Home() {
                 width: exportFormat === '9:16' ? 'auto' : '100%',
               }}
             >
-              <MainScene />
+              <ErrorBoundary name="3D Canvas">
+                <MainScene />
+              </ErrorBoundary>
               <EQCanvasLayer />
               <PlaylistOverlay />
               <TitleHTMLOverlay />
@@ -240,10 +243,12 @@ export default function Home() {
 
           {/* Tab content */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            {activeTab === 'STUDIO' && <StudioTab />}
-            {activeTab === 'MUSIC'  && <MusicSoundTab />}
-            {activeTab === 'SCENE'  && <SceneTab />}
-            {activeTab === 'STT'    && <STTSubtitleTab />}
+            <ErrorBoundary name="Sidebar">
+              {activeTab === 'STUDIO' && <StudioTab />}
+              {activeTab === 'MUSIC'  && <MusicSoundTab />}
+              {activeTab === 'SCENE'  && <SceneTab />}
+              {activeTab === 'STT'    && <STTSubtitleTab />}
+            </ErrorBoundary>
           </div>
 
         </aside>

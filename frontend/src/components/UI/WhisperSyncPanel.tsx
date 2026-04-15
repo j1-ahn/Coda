@@ -316,12 +316,19 @@ export default function WhisperSyncPanel() {
       });
 
       if (!res.ok) {
-        // 백엔드가 반환한 에러 메시지 추출
-        let detail = `HTTP ${res.status}`;
+        // 백엔드가 반환한 에러 메시지 추출 → 사용자 친화적 변환
+        let detail = '';
         try {
           const errBody = await res.json();
           if (errBody.detail) detail = errBody.detail;
-        } catch { /* JSON 파싱 실패 시 status code만 사용 */ }
+        } catch { /* JSON 파싱 실패 */ }
+
+        if (!detail) {
+          detail = res.status === 500 ? 'STT 서버 오류 — 백엔드 로그를 확인하세요'
+            : res.status === 413 ? '오디오 파일이 너무 큽니다'
+            : res.status === 503 ? 'STT 모델 로딩 중 — 잠시 후 다시 시도하세요'
+            : `음성 인식 실패 (${res.status})`;
+        }
         throw new Error(detail);
       }
 
