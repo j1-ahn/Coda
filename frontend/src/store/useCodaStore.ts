@@ -107,9 +107,16 @@ export interface VFXParams {
 // Store Interface
 // ---------------------------------------------------------------------------
 
+// v2 탭 ID
+export type SidebarTabId = 'STUDIO' | 'MUSIC' | 'SCENE' | 'STT';
+
 export interface CodaStore {
   // 프로젝트 ID (백엔드 업로드 키)
   projectId: string;
+
+  // 사이드바 탭
+  activeTab: SidebarTabId;
+  setActiveTab: (tab: SidebarTabId) => void;
 
   // 레이아웃/익스포트
   exportFormat: '16:9' | '9:16' | 'both';
@@ -358,6 +365,8 @@ export const useCodaStore = create<CodaStore>()(
   immer((set, _get) => ({
     // ---- initial state ----
     projectId: nanoid(),
+    activeTab: 'STUDIO' as SidebarTabId,
+    setActiveTab: (tab) => set((s) => { s.activeTab = tab; }),
     exportFormat: '16:9',
 
     scenes: [initialScene],

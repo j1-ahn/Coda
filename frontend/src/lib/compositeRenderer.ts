@@ -225,12 +225,6 @@ export function startCompositeRender(
         }
       }
 
-      // 단일 트랙(playlist.length===1)이 자연 종료된 경우
-      if (playlist.length === 1 && trackEndedNaturally && totalMs === Infinity) {
-        finish();
-        return;
-      }
-
       // 합성
       ctx.clearRect(0, 0, width, height);
       for (const canvas of canvases) {
