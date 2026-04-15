@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+/* ── march2004.com-inspired token system ─────────────────────────── */
+:root {
+  --bg:    #fafafa;
+  --fg:    #212121;
+  --muted: #bbbbbb;
+  --line:  #eaeaea;
+  --cols:  3;
+  --gap:   24px;
+  --pad:   24px;
+  --bar-h: 42px;
+}
+
+@media (max-width: 599px) {
+  :root {
+    --cols: 2;
+    --gap:  15px;
+    --pad:  15px;
+  }
+}
+@media (min-width: 1440px) {
+  :root { --cols: 4; }
+}
+
+@theme inline {
+  --color-bg:    var(--bg);
+  --color-fg:    var(--fg);
+  --color-muted: var(--muted);
+  --color-line:  var(--line);
+  --font-sans:   var(--font-geist-sans);
+  --font-mono:   var(--font-geist-mono);
+}
+
+/* ── Base ──────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: clamp(11px, 2vw, 12px);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'tnum' 1, 'kern' 1;
+  overflow-x: hidden;
+}
+
+/* ── Grid ──────────────────────────────────────────────────────────── */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: var(--gap);
+  padding: var(--pad);
+  padding-bottom: calc(var(--bar-h) + var(--pad) + 24px);
+}
+
+/* ── Card ──────────────────────────────────────────────────────────── */
+.card {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.15, 0, 0.25, 1);
+}
+
+.card:hover img {
+  transform: scale(1.03);
+}
+
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: var(--pad);
+  opacity: 0;
+  backdrop-filter: blur(4px);
+  background: rgba(250, 250, 250, 0.6);
+  transition: opacity 0.4s cubic-bezier(0.15, 0, 0.25, 1);
+}
+
+.card:hover .card-overlay {
+  opacity: 1;
+}
+
+/* ── Staggered fade-in ─────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  opacity: 0;
+  animation: fadeIn 0.75s cubic-bezier(0.15, 0, 0.25, 1) forwards;
+}
+
+/* ── Bottom bar ────────────────────────────────────────────────────── */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--bar-h);
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--pad);
+  z-index: 100;
+}
+
+.progress-track {
+  flex: 1;
+  height: 2px;
+  background: var(--line);
+  margin: 0 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--fg);
+  mix-blend-mode: difference;
+  transition: width 0.3s ease;
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  padding: 12px var(--pad);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Typography ────────────────────────────────────────────────────── */
+.text-label {
+  font-size: clamp(9px, 1.5vw, 10px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.text-meta {
+  font-size: clamp(10px, 1.8vw, 11px);
+  color: var(--fg);
+}
+
+.text-title {
+  font-size: clamp(11px, 2vw, 12px);
+  font-weight: 500;
+  color: var(--fg);
+}

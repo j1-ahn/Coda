@@ -396,6 +396,14 @@ export default function Home() {
               </button>
             ))}
           </div>
+          <a
+            href="http://localhost:3001"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2.5 py-1.5 text-[9px] label-caps border border-cream-300 text-ink-500 hover:text-ink-900 hover:border-ink-500 transition-colors"
+          >
+            GALLERY
+          </a>
           <SaveLoadPanel />
           <RenderPanel />
           <SettingsPanel />
