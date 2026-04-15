@@ -12,254 +12,34 @@ interface Release {
   duration: string;
   coverUrl: string;
   youtubeUrl?: string;
-  tags: string[];
 }
 
-// ── Mock data (replaced by YouTube API / Coda export when connected) ─────────
+// ── Mock releases ────────────────────────────────────────────────────────────
 
 const RELEASES: Release[] = [
-  {
-    id: '1', catalog: 'CODA-001', title: 'Midnight Drive', artist: 'j1',
-    duration: '3:45', coverUrl: '', youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', tags: ['lofi', 'cinematic'],
-  },
-  {
-    id: '2', catalog: 'CODA-002', title: 'Neon Rain', artist: 'j1',
-    duration: '4:12', coverUrl: '', youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', tags: ['synthwave', 'dark'],
-  },
-  {
-    id: '3', catalog: 'CODA-003', title: 'Dawn Chorus', artist: 'j1',
-    duration: '5:01', coverUrl: '', youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', tags: ['ambient', 'organic'],
-  },
-  {
-    id: '4', catalog: 'CODA-004', title: 'Static Memory', artist: 'j1',
-    duration: '3:28', coverUrl: '', youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', tags: ['glitch', 'experimental'],
-  },
-  {
-    id: '5', catalog: 'CODA-005', title: 'Velvet Hour', artist: 'j1',
-    duration: '4:55', coverUrl: '', youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', tags: ['jazz', 'warm'],
-  },
-  {
-    id: '6', catalog: 'CODA-006', title: 'Ghost Signal', artist: 'j1',
-    duration: '3:15', coverUrl: '', youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', tags: ['industrial', 'minimal'],
-  },
+  { id: '1', catalog: 'CODA-001', title: 'Midnight Drive',  artist: 'j1', duration: '3:45', coverUrl: '', youtubeUrl: '#' },
+  { id: '2', catalog: 'CODA-002', title: 'Neon Rain',       artist: 'j1', duration: '4:12', coverUrl: '', youtubeUrl: '#' },
+  { id: '3', catalog: 'CODA-003', title: 'Dawn Chorus',     artist: 'j1', duration: '5:01', coverUrl: '', youtubeUrl: '#' },
+  { id: '4', catalog: 'CODA-004', title: 'Static Memory',   artist: 'j1', duration: '3:28', coverUrl: '', youtubeUrl: '#' },
+  { id: '5', catalog: 'CODA-005', title: 'Velvet Hour',     artist: 'j1', duration: '4:55', coverUrl: '', youtubeUrl: '#' },
+  { id: '6', catalog: 'CODA-006', title: 'Ghost Signal',    artist: 'j1', duration: '3:15', coverUrl: '', youtubeUrl: '#' },
+  { id: '7', catalog: 'CODA-007', title: 'Paper Moon',      artist: 'j1', duration: '3:58', coverUrl: '', youtubeUrl: '#' },
+  { id: '8', catalog: 'CODA-008', title: 'Soft Collapse',   artist: 'j1', duration: '4:33', coverUrl: '', youtubeUrl: '#' },
+  { id: '9', catalog: 'CODA-009', title: 'Terminal Bloom',  artist: 'j1', duration: '3:07', coverUrl: '', youtubeUrl: '#' },
 ];
 
-// ── Generative cover placeholder ─────────────────────────────────────────────
+// ── Generative cover — dark, minimal ─────────────────────────────────────────
 
-function PlaceholderCover({ seed, title }: { seed: number; title: string }) {
-  const hue = (seed * 137.508) % 360;
-  const bg1 = `hsl(${hue}, 8%, 18%)`;
-  const bg2 = `hsl(${(hue + 40) % 360}, 12%, 12%)`;
-
+function Cover({ seed }: { seed: number }) {
+  const h = (seed * 137.508) % 360;
   return (
     <div
       style={{
         width: '100%',
         height: '100%',
-        background: `linear-gradient(135deg, ${bg1}, ${bg2})`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        background: `linear-gradient(${seed * 45}deg, hsl(${h}, 5%, 8%), hsl(${(h + 30) % 360}, 8%, 14%))`,
       }}
-    >
-      <span
-        style={{
-          color: `hsl(${hue}, 15%, 55%)`,
-          fontSize: 'clamp(14px, 3vw, 22px)',
-          fontWeight: 300,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          fontFamily: 'var(--font-geist-sans)',
-        }}
-      >
-        {title}
-      </span>
-    </div>
-  );
-}
-
-// ── Card component ───────────────────────────────────────────────────────────
-
-function ReleaseCard({
-  release,
-  index,
-  isPlaying,
-  onPlay,
-}: {
-  release: Release;
-  index: number;
-  isPlaying: boolean;
-  onPlay: (release: Release) => void;
-}) {
-  return (
-    <div
-      className="card fade-in"
-      style={{ animationDelay: `${index * 0.08}s` }}
-    >
-      {release.coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={release.coverUrl} alt={release.title} />
-      ) : (
-        <PlaceholderCover seed={index + 1} title={release.title} />
-      )}
-
-      {/* Playing indicator */}
-      {isPlaying && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            background: 'var(--fg)',
-            animation: 'fadeIn 0.3s ease',
-          }}
-        />
-      )}
-
-      {/* Hover overlay */}
-      <div className="card-overlay">
-        <span className="text-label">{release.catalog}</span>
-        <span className="text-title" style={{ marginTop: 4 }}>
-          {release.title}
-        </span>
-        <span className="text-meta" style={{ color: 'var(--muted)' }}>
-          {release.artist} &middot; {release.duration}
-        </span>
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-          {release.tags.map((t) => (
-            <span
-              key={t}
-              className="text-label"
-              style={{
-                padding: '2px 6px',
-                border: '1px solid var(--line)',
-                fontSize: 'clamp(8px, 1.2vw, 9px)',
-              }}
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); onPlay(release); }}
-            className="text-label"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--fg)',
-              letterSpacing: '0.12em',
-              padding: 0,
-            }}
-          >
-            {isPlaying ? 'PAUSE' : 'PLAY'}
-          </button>
-          {release.youtubeUrl && (
-            <a
-              href={release.youtubeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-label"
-              style={{
-                color: 'var(--fg)',
-                textDecoration: 'none',
-                letterSpacing: '0.12em',
-              }}
-            >
-              WATCH &rarr;
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Bottom Player Bar ────────────────────────────────────────────────────────
-
-function BottomPlayer({
-  current,
-  isPlaying,
-  progress,
-  onToggle,
-  onSeek,
-  currentTime,
-  totalDuration,
-}: {
-  current: Release | null;
-  isPlaying: boolean;
-  progress: number;
-  onToggle: () => void;
-  onSeek: (pct: number) => void;
-  currentTime: string;
-  totalDuration: string;
-}) {
-  const trackRef = useRef<HTMLDivElement>(null);
-
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!trackRef.current) return;
-    const rect = trackRef.current.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    onSeek(pct);
-  };
-
-  return (
-    <div className="bottom-bar">
-      {current ? (
-        <>
-          <button
-            onClick={onToggle}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              width: 16,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <span className="text-label" style={{ color: 'var(--fg)', fontSize: 10 }}>
-              {isPlaying ? '||' : '\u25B6'}
-            </span>
-          </button>
-          <span className="text-meta" style={{ marginLeft: 8, whiteSpace: 'nowrap' }}>
-            {current.title}
-          </span>
-          <span className="text-label" style={{ marginLeft: 6 }}>{currentTime}</span>
-          <div
-            ref={trackRef}
-            className="progress-track"
-            onClick={handleClick}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
-          </div>
-          <span className="text-label">{totalDuration}</span>
-        </>
-      ) : (
-        <>
-          <span className="text-label">CODA GALLERY</span>
-          <div className="progress-track">
-            <div className="progress-fill" style={{ width: '0%' }} />
-          </div>
-        </>
-      )}
-      <a
-        href="https://youtube.com/@j1-ahn"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-label"
-        style={{ color: 'var(--fg)', textDecoration: 'none', marginLeft: 12 }}
-      >
-        YT &rarr;
-      </a>
-    </div>
+    />
   );
 }
 
@@ -271,156 +51,173 @@ function fmtTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+function parseDur(dur: string): number {
+  const p = dur.split(':').map(Number);
+  return (p[0] ?? 0) * 60 + (p[1] ?? 0);
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function GalleryPage() {
-  const [filter, setFilter] = useState<string | null>(null);
-  const [currentRelease, setCurrentRelease] = useState<Release | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [current, setCurrent] = useState<Release | null>(null);
+  const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [currentTime, setCurrentTime] = useState('0:00');
-  const [totalDuration, setTotalDuration] = useState('0:00');
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [curTime, setCurTime] = useState('0:00');
+  const trackRef = useRef<HTMLDivElement>(null);
 
-  // YouTube IFrame embed for audio playback
-  const youtubeVideoId = currentRelease?.youtubeUrl
-    ? new URL(currentRelease.youtubeUrl).searchParams.get('v')
-    : null;
+  const totalDur = current ? fmtTime(parseDur(current.duration)) : '0:00';
 
-  const allTags = Array.from(new Set(RELEASES.flatMap((r) => r.tags)));
-  const filtered = filter
-    ? RELEASES.filter((r) => r.tags.includes(filter))
-    : RELEASES;
-
-  const handlePlay = useCallback((release: Release) => {
-    if (currentRelease?.id === release.id) {
-      // Toggle current
-      setIsPlaying((p) => !p);
+  // Play / toggle
+  const play = useCallback((r: Release) => {
+    if (current?.id === r.id) {
+      setPlaying(p => !p);
     } else {
-      setCurrentRelease(release);
-      setIsPlaying(true);
+      setCurrent(r);
+      setPlaying(true);
       setProgress(0);
-      setCurrentTime('0:00');
-
-      // Parse duration string "m:ss" to total duration
-      const parts = release.duration.split(':').map(Number);
-      const totalSec = (parts[0] ?? 0) * 60 + (parts[1] ?? 0);
-      setTotalDuration(fmtTime(totalSec));
+      setCurTime('0:00');
     }
-  }, [currentRelease]);
+  }, [current]);
 
-  const handleToggle = useCallback(() => {
-    setIsPlaying((p) => !p);
-  }, []);
-
-  const handleSeek = useCallback((pct: number) => {
+  // Seek
+  const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!trackRef.current || !current) return;
+    const rect = trackRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     setProgress(pct);
-    if (currentRelease) {
-      const parts = currentRelease.duration.split(':').map(Number);
-      const totalSec = (parts[0] ?? 0) * 60 + (parts[1] ?? 0);
-      setCurrentTime(fmtTime(pct * totalSec));
-    }
-  }, [currentRelease]);
+    setCurTime(fmtTime(pct * parseDur(current.duration)));
+  }, [current]);
 
-  // Simulate progress when playing (since we don't have real audio yet)
+  // Simulated progress
   useEffect(() => {
-    if (!isPlaying || !currentRelease) return;
-    const parts = currentRelease.duration.split(':').map(Number);
-    const totalSec = (parts[0] ?? 0) * 60 + (parts[1] ?? 0);
-    if (totalSec === 0) return;
-
-    const interval = setInterval(() => {
-      setProgress((p) => {
-        const next = p + 1 / totalSec;
-        if (next >= 1) {
-          setIsPlaying(false);
-          return 1;
-        }
-        setCurrentTime(fmtTime(next * totalSec));
+    if (!playing || !current) return;
+    const total = parseDur(current.duration);
+    if (!total) return;
+    const iv = setInterval(() => {
+      setProgress(p => {
+        const next = p + 1 / total;
+        if (next >= 1) { setPlaying(false); return 1; }
+        setCurTime(fmtTime(next * total));
         return next;
       });
     }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentRelease]);
+    return () => clearInterval(iv);
+  }, [playing, current]);
 
   return (
     <>
-      {/* Header */}
+      {/* Header — just name + count */}
       <header className="site-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="text-title" style={{ letterSpacing: '0.15em' }}>
-            CODA GALLERY
-          </span>
-          <span className="text-label">{RELEASES.length} releases</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => setFilter(null)}
-            className="text-label"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: !filter ? 'var(--fg)' : 'var(--muted)',
-              transition: 'color 0.2s',
-            }}
-          >
-            ALL
-          </button>
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setFilter(tag)}
-              className="text-label"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: filter === tag ? 'var(--fg)' : 'var(--muted)',
-                transition: 'color 0.2s',
-              }}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
+        <span className="t-title" style={{ letterSpacing: '0.1em' }}>
+          CODA
+        </span>
+        <span className="t-cat">{RELEASES.length} releases</span>
       </header>
 
       {/* Grid */}
       <main className="gallery-grid">
-        {filtered.map((r, i) => (
-          <ReleaseCard
+        {RELEASES.map((r, i) => (
+          <div
             key={r.id}
-            release={r}
-            index={i}
-            isPlaying={isPlaying && currentRelease?.id === r.id}
-            onPlay={handlePlay}
-          />
+            className="card fade-up"
+            style={{ animationDelay: `${i * 0.06}s` }}
+          >
+            {/* Square cover */}
+            <div className="card-cover">
+              {r.coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={r.coverUrl} alt={r.title} />
+              ) : (
+                <Cover seed={i + 1} />
+              )}
+
+              {/* Playing indicator */}
+              {playing && current?.id === r.id && (
+                <div style={{ position: 'absolute', top: 10, left: 10 }}>
+                  <div className="playing-dot" />
+                </div>
+              )}
+
+              {/* Hover — just PLAY + WATCH */}
+              <div className="card-hover">
+                <button onClick={() => play(r)}>
+                  {playing && current?.id === r.id ? 'pause' : 'play'}
+                </button>
+                {r.youtubeUrl && (
+                  <a
+                    href={r.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      marginLeft: 16,
+                      color: 'var(--fg)',
+                      textDecoration: 'none',
+                      fontSize: 'clamp(9px, 1.5vw, 10px)',
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      fontFamily: 'inherit',
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    watch
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Meta — catalog . title . duration */}
+            <div className="card-meta">
+              <div className="card-meta-left">
+                <span className="t-cat">{r.catalog}</span>
+                <span className="t-title">{r.title}</span>
+              </div>
+              <span className="t-dur">{r.duration}</span>
+            </div>
+          </div>
         ))}
       </main>
 
-      {/* Hidden YouTube embed for future real audio */}
-      {youtubeVideoId && (
-        <iframe
-          ref={iframeRef}
-          src={`https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1&autoplay=${isPlaying ? 1 : 0}`}
-          style={{ position: 'fixed', left: -9999, width: 1, height: 1 }}
-          allow="autoplay"
-          title="audio"
-        />
-      )}
-
-      {/* Bottom player bar */}
-      <BottomPlayer
-        current={currentRelease}
-        isPlaying={isPlaying}
-        progress={progress}
-        onToggle={handleToggle}
-        onSeek={handleSeek}
-        currentTime={currentTime}
-        totalDuration={totalDuration}
-      />
+      {/* Bottom player bar — 42px, minimal */}
+      <div className="bottom-bar">
+        {current ? (
+          <>
+            <button
+              className="nav-link"
+              onClick={() => setPlaying(p => !p)}
+              style={{ width: 14, textAlign: 'center' }}
+            >
+              {playing ? '||' : '\u25B6'}
+            </button>
+            <span className="t-cat" style={{ whiteSpace: 'nowrap' }}>
+              {current.catalog}
+            </span>
+            <span className="t-title" style={{ whiteSpace: 'nowrap' }}>
+              {current.title}
+            </span>
+            <span className="t-dur">{curTime}</span>
+            <div ref={trackRef} className="progress-track" onClick={seek}>
+              <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
+            </div>
+            <span className="t-dur">{totalDur}</span>
+          </>
+        ) : (
+          <>
+            <span className="t-cat">coda gallery</span>
+            <div className="progress-track">
+              <div className="progress-fill" style={{ width: '0%' }} />
+            </div>
+          </>
+        )}
+        <a
+          href="https://youtube.com/@j1-ahn"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="nav-link"
+          style={{ color: 'var(--fg)' }}
+        >
+          yt
+        </a>
+      </div>
     </>
   );
 }

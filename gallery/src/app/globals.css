@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ── march2004.com-inspired token system ─────────────────────────── */
+/* ── march2004.com faithful token system ─────────────────────────── */
 :root {
   --bg:    #fafafa;
   --fg:    #212121;
@@ -22,6 +22,9 @@
 @media (min-width: 1440px) {
   :root { --cols: 4; }
 }
+@media (min-width: 2001px) {
+  :root { --cols: 5; }
+}
 
 @theme inline {
   --color-bg:    var(--bg);
@@ -32,77 +35,154 @@
   --font-mono:   var(--font-geist-mono);
 }
 
-/* ── Base ──────────────────────────────────────────────────────────── */
+/* ── Reset ─────────────────────────────────────────────────────────── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-geist-mono), 'SF Mono', 'Fira Code', monospace;
   font-size: clamp(11px, 2vw, 12px);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'tnum' 1, 'kern' 1;
   overflow-x: hidden;
 }
 
-/* ── Grid ──────────────────────────────────────────────────────────── */
+/* ── Grid — march2004 style ────────────────────────────────────────── */
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(var(--cols), 1fr);
   gap: var(--gap);
   padding: var(--pad);
-  padding-bottom: calc(var(--bar-h) + var(--pad) + 24px);
+  padding-bottom: calc(var(--bar-h) + var(--pad) * 2);
 }
 
-/* ── Card ──────────────────────────────────────────────────────────── */
+/* ── Card — square, no decoration ──────────────────────────────────── */
 .card {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-cover {
   position: relative;
   aspect-ratio: 1;
   overflow: hidden;
-  cursor: pointer;
+  background: #111;
 }
 
-.card img {
+.card-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.15, 0, 0.25, 1);
+  display: block;
 }
 
-.card:hover img {
-  transform: scale(1.03);
-}
-
-.card-overlay {
+/* Hover: blur overlay with action */
+.card-hover {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: var(--pad);
+  align-items: center;
+  justify-content: center;
   opacity: 0;
   backdrop-filter: blur(4px);
-  background: rgba(250, 250, 250, 0.6);
-  transition: opacity 0.4s cubic-bezier(0.15, 0, 0.25, 1);
+  background: rgba(250, 250, 250, 0.55);
+  transition: opacity 0.35s cubic-bezier(0.15, 0, 0.25, 1);
 }
 
-.card:hover .card-overlay {
+.card:hover .card-hover {
   opacity: 1;
 }
 
+.card-hover button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: clamp(9px, 1.5vw, 10px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0;
+}
+
+.card-hover button + button {
+  margin-left: 16px;
+}
+
+/* Meta below cover — catalog + title only */
+.card-meta {
+  padding: 8px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.card-meta-left {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+/* ── Typography — extreme restraint ────────────────────────────────── */
+.t-cat {
+  font-size: clamp(9px, 1.4vw, 10px);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.t-title {
+  font-size: clamp(10px, 1.6vw, 11px);
+  color: var(--fg);
+}
+
+.t-dur {
+  font-size: clamp(9px, 1.4vw, 10px);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Staggered fade-in ─────────────────────────────────────────────── */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.fade-in {
+.fade-up {
   opacity: 0;
-  animation: fadeIn 0.75s cubic-bezier(0.15, 0, 0.25, 1) forwards;
+  animation: fadeUp 0.75s cubic-bezier(0.15, 0, 0.25, 1) forwards;
 }
 
-/* ── Bottom bar ────────────────────────────────────────────────────── */
+/* ── Playing indicator ─────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.playing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+/* ── Header — sticky, ultra-thin ───────────────────────────────────── */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  padding: 14px var(--pad);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Bottom bar — fixed, 42px ──────────────────────────────────────── */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -114,6 +194,7 @@ body {
   display: flex;
   align-items: center;
   padding: 0 var(--pad);
+  gap: 12px;
   z-index: 100;
 }
 
@@ -121,46 +202,33 @@ body {
   flex: 1;
   height: 2px;
   background: var(--line);
-  margin: 0 12px;
   position: relative;
-  overflow: hidden;
+  cursor: pointer;
 }
 
 .progress-fill {
   height: 100%;
   background: var(--fg);
   mix-blend-mode: difference;
-  transition: width 0.3s ease;
+  transition: width 0.15s linear;
 }
 
-/* ── Header ────────────────────────────────────────────────────────── */
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
-  padding: 12px var(--pad);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* ── Typography ────────────────────────────────────────────────────── */
-.text-label {
-  font-size: clamp(9px, 1.5vw, 10px);
-  letter-spacing: 0.08em;
+/* ── Utility ───────────────────────────────────────────────────────── */
+.nav-link {
+  font-size: clamp(9px, 1.4vw, 10px);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  transition: color 0.2s;
 }
 
-.text-meta {
-  font-size: clamp(10px, 1.8vw, 11px);
-  color: var(--fg);
-}
-
-.text-title {
-  font-size: clamp(11px, 2vw, 12px);
-  font-weight: 500;
+.nav-link:hover,
+.nav-link[data-active="true"] {
   color: var(--fg);
 }
