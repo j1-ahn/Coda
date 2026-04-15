@@ -81,11 +81,46 @@ const PRESETS_3D: Record<string, Title3DPreset> = {
 
 // ── Font URLs (Google Fonts woff — used by troika-three-text) ────────────────
 
+const FONT_URLS = {
+  cormorant:  'https://fonts.gstatic.com/s/cormorantgaramond/v16/co3YmX5slCNuHLi8bLeY9MK7whWMhyjQAllvuQ.woff',
+  spaceGrotesk: 'https://fonts.gstatic.com/s/spacegrotesk/v16/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff',
+  oswald:     'https://fonts.gstatic.com/s/oswald/v53/TK3_WkUHHAIjg75cFRf3bXL8LICs18NvgUE.woff',
+  permanentMarker: 'https://fonts.gstatic.com/s/permanentmarker/v16/Fh4uPib9Iyv2ucM6pGQMWimMp004HaqIfrT5nlk.woff2',
+  dancingScript:   'https://fonts.gstatic.com/s/dancingscript/v25/If2RXTr6YS-zF4S-kcSWSVi_szLgiuE.woff2',
+  notoSansKR:      'https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLTq8H4hGPNuCQo.woff2',
+  jetbrainsMono:   'https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2',
+  caveat:          'https://fonts.gstatic.com/s/caveat/v18/WnznHAc5bAfYB2QRah7pcpNvOx-pjfJ9SIKjYBxPigs.woff2',
+} as const;
+
 const FONT_MAP: Record<string, string> = {
-  elegant: 'https://fonts.gstatic.com/s/cormorantgaramond/v16/co3YmX5slCNuHLi8bLeY9MK7whWMhyjQAllvuQ.woff',
-  lofi: 'https://fonts.gstatic.com/s/spacegrotesk/v16/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff',
-  pop: 'https://fonts.gstatic.com/s/oswald/v53/TK3_WkUHHAIjg75cFRf3bXL8LICs18NvgUE.woff',
-  bold: 'https://fonts.gstatic.com/s/oswald/v53/TK3_WkUHHAIjg75cFRf3bXL8LICs18NvgUE.woff',
+  // PR presets
+  mono:     FONT_URLS.jetbrainsMono,
+  brush:    FONT_URLS.caveat,
+  stencil:  FONT_URLS.oswald,
+  pixel:    FONT_URLS.spaceGrotesk,
+  deco:     FONT_URLS.cormorant,
+  noir:     FONT_URLS.spaceGrotesk,
+  // GFX presets
+  elegant:  FONT_URLS.cormorant,
+  lofi:     FONT_URLS.spaceGrotesk,
+  pop:      FONT_URLS.oswald,
+  retro3d:  FONT_URLS.oswald,
+  emboss:   FONT_URLS.spaceGrotesk,
+  glitch:   FONT_URLS.spaceGrotesk,
+  // VFX presets
+  neon:     FONT_URLS.spaceGrotesk,
+  graffiti: FONT_URLS.permanentMarker,
+  vapor:    FONT_URLS.cormorant,
+  chrome:   FONT_URLS.dancingScript,
+  dark:     FONT_URLS.notoSansKR,
+  ice:      FONT_URLS.spaceGrotesk,
+  // EQ&PL presets
+  pastel:   FONT_URLS.cormorant,
+  brutalist: FONT_URLS.oswald,
+  glass:    FONT_URLS.spaceGrotesk,
+  woodcut:  FONT_URLS.permanentMarker,
+  comic:    FONT_URLS.caveat,
+  minimal:  FONT_URLS.spaceGrotesk,
 };
 
 // ── Title3D component ────────────────────────────────────────────────────────
