@@ -46,6 +46,11 @@ class EncodeRequest(BaseModel):
     nvenc_mode: Literal["auto", "nvenc", "cpu"] = "auto"
     ffmpeg_path: Optional[str] = None   # None = use system PATH
     output_path: Optional[str] = None   # None = use default render_tmp/
+    # Gallery export metadata
+    gallery_export: bool = False
+    gallery_title: Optional[str] = None
+    gallery_artist: Optional[str] = None
+    gallery_tags: Optional[List[str]] = None
 
 
 # ─── Session ──────────────────────────────────────────────────────────────────
@@ -196,6 +201,15 @@ async def _run_encode(session_id: str, req: EncodeRequest) -> None:
                     dst = out_dir / f"coda_{key}.mp4"
                     shutil.copy2(src, dst)
                     logger.info("Session %s: copied %s → %s", session_id, src, dst)
+
+        # ── Gallery export: thumbnail + metadata.json ─────────────────────
+        if req.gallery_export and req.output_path:
+            _export_gallery_metadata(
+                session_id=session_id,
+                tmp=tmp,
+                out_dir=Path(req.output_path),
+                req=req,
+            )
 
         session.status = "done"
         session.progress = 1.0
@@ -378,3 +392,79 @@ async def _run_concat(concat_session_id: str, req: ConcatRequest) -> None:
         concat_session.status = "error"
         concat_session.message = str(exc)
         logger.exception("Concat session %s failed: %s", concat_session_id, exc)
+
+
+# ── Gallery export helper ─────────────────────────────────────────────────────
+
+def _export_gallery_metadata(
+    session_id: str,
+    tmp: Path,
+    out_dir: Path,
+    req: EncodeRequest,
+) -> None:
+    """Generate thumbnail + gallery-metadata.json alongside rendered video."""
+    import subprocess
+    from datetime import datetime
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Extract thumbnail from first frame of 16:9 video
+    video_169 = out_dir / "coda_16-9.mp4"
+    thumb_path = out_dir / "thumbnail.jpg"
+    if video_169.exists():
+        try:
+            ffmpeg_bin = req.ffmpeg_path or "ffmpeg"
+            subprocess.run(
+                [
+                    ffmpeg_bin, "-y",
+                    "-i", str(video_169),
+                    "-vframes", "1",
+                    "-q:v", "2",
+                    str(thumb_path),
+                ],
+                capture_output=True,
+                timeout=30,
+            )
+            logger.info("Session %s: thumbnail → %s", session_id, thumb_path)
+        except Exception as e:
+            logger.warning("Session %s: thumbnail extraction failed: %s", session_id, e)
+
+    # Write metadata JSON
+    metadata = {
+        "catalog": f"CODA-{session_id[:6].upper()}",
+        "title": req.gallery_title or "Untitled",
+        "artist": req.gallery_artist or "j1",
+        "tags": req.gallery_tags or [],
+        "duration_sec": None,  # filled below
+        "thumbnail": "thumbnail.jpg" if thumb_path.exists() else None,
+        "video_16_9": "coda_16-9.mp4" if (out_dir / "coda_16-9.mp4").exists() else None,
+        "video_9_16": "coda_9-16.mp4" if (out_dir / "coda_9-16.mp4").exists() else None,
+        "rendered_at": datetime.now().isoformat(),
+        "resolution": f"{req.width}x{req.height}",
+        "fps": req.fps,
+    }
+
+    # Get duration via ffprobe
+    if video_169.exists():
+        try:
+            ffprobe_bin = (req.ffmpeg_path or "ffmpeg").replace("ffmpeg", "ffprobe")
+            result = subprocess.run(
+                [
+                    ffprobe_bin,
+                    "-v", "error",
+                    "-show_entries", "format=duration",
+                    "-of", "csv=p=0",
+                    str(video_169),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.stdout.strip():
+                metadata["duration_sec"] = round(float(result.stdout.strip()), 2)
+        except Exception:
+            pass
+
+    meta_path = out_dir / "gallery-metadata.json"
+    meta_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+    logger.info("Session %s: gallery metadata → %s", session_id, meta_path)

@@ -350,6 +350,7 @@ export default function Home() {
   const previewMode    = useCodaStore((s) => s.previewMode);
 
   const [activeTab, setActiveTab] = useState<TabId>('GRAPHICS');
+  const [showGallery, setShowGallery] = useState(false);
   const autoSaveInterval = useSettingsStore((s) => s.autoSaveInterval);
 
   // Hydrate once on mount
@@ -396,22 +397,41 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <a
-            href="http://localhost:3001"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-2.5 py-1.5 text-[9px] label-caps border border-cream-300 text-ink-500 hover:text-ink-900 hover:border-ink-500 transition-colors"
+          <button
+            onClick={() => setShowGallery((v) => !v)}
+            className={`px-2.5 py-1.5 text-[9px] label-caps border transition-colors ${
+              showGallery
+                ? 'bg-ink-900 text-cream-100 border-ink-900'
+                : 'border-cream-300 text-ink-500 hover:text-ink-900 hover:border-ink-500'
+            }`}
           >
             GALLERY
-          </a>
+          </button>
           <SaveLoadPanel />
           <RenderPanel />
           <SettingsPanel />
         </div>
       </header>
 
+      {/* ── Gallery iframe overlay ──────────────────────────────────────── */}
+      {showGallery && (
+        <div className="flex-1 min-h-0 flex flex-col relative">
+          <iframe
+            src="http://localhost:3001"
+            className="w-full h-full border-0"
+            title="Coda Gallery"
+          />
+          <button
+            onClick={() => setShowGallery(false)}
+            className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center bg-white/80 backdrop-blur text-[10px] text-ink-900 border border-cream-300 hover:bg-ink-900 hover:text-cream-100 transition-colors z-10"
+          >
+            X
+          </button>
+        </div>
+      )}
+
       {/* ── Body ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className={`flex flex-1 min-h-0 overflow-hidden ${showGallery ? 'hidden' : ''}`}>
 
         {/* LEFT: Canvas column */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
