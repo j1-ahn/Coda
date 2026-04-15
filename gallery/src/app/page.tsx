@@ -14,23 +14,59 @@ interface Release {
   youtubeUrl?: string;
 }
 
-// ── Mock releases ────────────────────────────────────────────────────────────
+// ── Releases with real covers ────────────────────────────────────────────────
 
 const RELEASES: Release[] = [
-  { id: '1', catalog: 'CODA-001', title: 'Midnight Drive',  artist: 'j1', duration: '3:45', coverUrl: '', youtubeUrl: '#' },
-  { id: '2', catalog: 'CODA-002', title: 'Neon Rain',       artist: 'j1', duration: '4:12', coverUrl: '', youtubeUrl: '#' },
-  { id: '3', catalog: 'CODA-003', title: 'Dawn Chorus',     artist: 'j1', duration: '5:01', coverUrl: '', youtubeUrl: '#' },
-  { id: '4', catalog: 'CODA-004', title: 'Static Memory',   artist: 'j1', duration: '3:28', coverUrl: '', youtubeUrl: '#' },
-  { id: '5', catalog: 'CODA-005', title: 'Velvet Hour',     artist: 'j1', duration: '4:55', coverUrl: '', youtubeUrl: '#' },
-  { id: '6', catalog: 'CODA-006', title: 'Ghost Signal',    artist: 'j1', duration: '3:15', coverUrl: '', youtubeUrl: '#' },
-  { id: '7', catalog: 'CODA-007', title: 'Paper Moon',      artist: 'j1', duration: '3:58', coverUrl: '', youtubeUrl: '#' },
-  { id: '8', catalog: 'CODA-008', title: 'Soft Collapse',   artist: 'j1', duration: '4:33', coverUrl: '', youtubeUrl: '#' },
-  { id: '9', catalog: 'CODA-009', title: 'Terminal Bloom',  artist: 'j1', duration: '3:07', coverUrl: '', youtubeUrl: '#' },
+  {
+    id: '1', catalog: 'CODA-001',
+    title: 'Static Love', artist: 'j1', duration: '3:45',
+    coverUrl: '/covers/static-love.jpg', youtubeUrl: '#',
+  },
+  {
+    id: '2', catalog: 'CODA-002',
+    title: 'World Rap', artist: 'j1', duration: '4:12',
+    coverUrl: '/covers/world-rap.jpg', youtubeUrl: '#',
+  },
+  {
+    id: '3', catalog: 'CODA-003',
+    title: 'Pink Room', artist: 'j1', duration: '5:01',
+    coverUrl: '/covers/pink-room.jpg', youtubeUrl: '#',
+  },
+  {
+    id: '4', catalog: 'CODA-004',
+    title: 'Midnight Thoughts', artist: 'archeraye', duration: '3:28',
+    coverUrl: '/covers/midnight-thoughts.jpg', youtubeUrl: '#',
+  },
+  {
+    id: '5', catalog: 'CODA-005',
+    title: 'Mind Bloom', artist: 'j1', duration: '4:55',
+    coverUrl: '/covers/mind-bloom.jpg', youtubeUrl: '#',
+  },
+  {
+    id: '6', catalog: 'CODA-006',
+    title: 'Ghost Signal', artist: 'j1', duration: '3:15',
+    coverUrl: '', youtubeUrl: '#',
+  },
+  {
+    id: '7', catalog: 'CODA-007',
+    title: 'Paper Moon', artist: 'j1', duration: '3:58',
+    coverUrl: '', youtubeUrl: '#',
+  },
+  {
+    id: '8', catalog: 'CODA-008',
+    title: 'Soft Collapse', artist: 'j1', duration: '4:33',
+    coverUrl: '', youtubeUrl: '#',
+  },
+  {
+    id: '9', catalog: 'CODA-009',
+    title: 'Terminal Bloom', artist: 'j1', duration: '3:07',
+    coverUrl: '', youtubeUrl: '#',
+  },
 ];
 
-// ── Generative cover — dark, minimal ─────────────────────────────────────────
+// ── Generative cover fallback ────────────────────────────────────────────────
 
-function Cover({ seed }: { seed: number }) {
+function GenCover({ seed }: { seed: number }) {
   const h = (seed * 137.508) % 360;
   return (
     <div
@@ -43,7 +79,7 @@ function Cover({ seed }: { seed: number }) {
   );
 }
 
-// ── Time formatting ──────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtTime(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -67,7 +103,6 @@ export default function GalleryPage() {
 
   const totalDur = current ? fmtTime(parseDur(current.duration)) : '0:00';
 
-  // Play / toggle
   const play = useCallback((r: Release) => {
     if (current?.id === r.id) {
       setPlaying(p => !p);
@@ -79,7 +114,6 @@ export default function GalleryPage() {
     }
   }, [current]);
 
-  // Seek
   const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!trackRef.current || !current) return;
     const rect = trackRef.current.getBoundingClientRect();
@@ -88,7 +122,6 @@ export default function GalleryPage() {
     setCurTime(fmtTime(pct * parseDur(current.duration)));
   }, [current]);
 
-  // Simulated progress
   useEffect(() => {
     if (!playing || !current) return;
     const total = parseDur(current.duration);
@@ -106,7 +139,7 @@ export default function GalleryPage() {
 
   return (
     <>
-      {/* Header — just name + count */}
+      {/* Header */}
       <header className="site-header">
         <span className="t-title" style={{ letterSpacing: '0.1em' }}>
           CODA
@@ -126,9 +159,9 @@ export default function GalleryPage() {
             <div className="card-cover">
               {r.coverUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={r.coverUrl} alt={r.title} />
+                <img src={r.coverUrl} alt={r.title} loading="lazy" />
               ) : (
-                <Cover seed={i + 1} />
+                <GenCover seed={i + 1} />
               )}
 
               {/* Playing indicator */}
@@ -138,7 +171,7 @@ export default function GalleryPage() {
                 </div>
               )}
 
-              {/* Hover — just PLAY + WATCH */}
+              {/* Hover */}
               <div className="card-hover">
                 <button onClick={() => play(r)}>
                   {playing && current?.id === r.id ? 'pause' : 'play'}
@@ -148,15 +181,7 @@ export default function GalleryPage() {
                     href={r.youtubeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                      marginLeft: 16,
-                      color: 'var(--fg)',
-                      textDecoration: 'none',
-                      fontSize: 'clamp(9px, 1.5vw, 10px)',
-                      letterSpacing: '0.12em',
-                      textTransform: 'uppercase',
-                      fontFamily: 'inherit',
-                    }}
+                    className="hover-link"
                     onClick={e => e.stopPropagation()}
                   >
                     watch
@@ -165,7 +190,7 @@ export default function GalleryPage() {
               </div>
             </div>
 
-            {/* Meta — catalog . title . duration */}
+            {/* Meta */}
             <div className="card-meta">
               <div className="card-meta-left">
                 <span className="t-cat">{r.catalog}</span>
@@ -177,7 +202,7 @@ export default function GalleryPage() {
         ))}
       </main>
 
-      {/* Bottom player bar — 42px, minimal */}
+      {/* Bottom bar */}
       <div className="bottom-bar">
         {current ? (
           <>

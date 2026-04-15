@@ -109,8 +109,18 @@ body {
   padding: 0;
 }
 
-.card-hover button + button {
+.card-hover button + button,
+.card-hover .hover-link {
   margin-left: 16px;
+}
+
+.hover-link {
+  color: var(--fg);
+  text-decoration: none;
+  font-size: clamp(9px, 1.5vw, 10px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: inherit;
 }
 
 /* Meta below cover — catalog + title only */
