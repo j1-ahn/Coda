@@ -9,7 +9,7 @@
  * Strong directional + point lights provide metallic sheen.
  */
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
@@ -131,24 +131,25 @@ function Title3DText({
   presetName,
   animate,
   fontScale,
+  fontPreset,
 }: {
   text: string;
   subtext: string;
   presetName: string;
   animate: 'breathing' | 'float' | 'static';
   fontScale: number;
+  fontPreset: string;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const matRef   = useRef<THREE.MeshStandardMaterial>(null);
   const preset = PRESETS_3D[presetName] || PRESETS_3D.gold;
   const { viewport } = useThree();
 
   const fontSize    = viewport.width * 0.08 * fontScale;
   const subFontSize = fontSize * 0.35;
 
-  // Create material once, update on preset change
+  // Create material — dispose on change to prevent GPU memory leak
   const material = useMemo(() => {
-    const mat = new THREE.MeshStandardMaterial({
+    return new THREE.MeshStandardMaterial({
       color: new THREE.Color(preset.color),
       emissive: new THREE.Color(preset.emissive),
       emissiveIntensity: preset.emissiveIntensity,
@@ -156,7 +157,6 @@ function Title3DText({
       roughness: 0.25,
       side: THREE.DoubleSide,
     });
-    return mat;
   }, [preset.color, preset.emissive, preset.emissiveIntensity]);
 
   const subMaterial = useMemo(() => {
@@ -172,6 +172,14 @@ function Title3DText({
     });
   }, [preset.color, preset.emissive, preset.emissiveIntensity]);
 
+  // Dispose old materials on preset change (prevent GPU memory leak)
+  useEffect(() => {
+    return () => { material.dispose(); };
+  }, [material]);
+  useEffect(() => {
+    return () => { subMaterial.dispose(); };
+  }, [subMaterial]);
+
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
     const t = clock.getElapsedTime();
@@ -185,7 +193,7 @@ function Title3DText({
     }
   });
 
-  const fontUrl = FONT_MAP[useCodaStore.getState().titleFontPreset ?? ''] || FONT_MAP.lofi;
+  const fontUrl = FONT_MAP[fontPreset] || FONT_MAP.lofi;
 
   return (
     <group ref={groupRef} renderOrder={800}>
@@ -232,12 +240,13 @@ function Title3DText({
 // ── Root export ──────────────────────────────────────────────────────────────
 
 export default function TitleLayer() {
-  const titleText      = useCodaStore((s) => s.titleText);
-  const titleSubtext   = useCodaStore((s) => s.titleSubtext);
-  const titleRender3D  = useCodaStore((s) => s.titleRender3D);
-  const title3DPreset  = useCodaStore((s) => s.title3DPreset);
-  const title3DAnimate = useCodaStore((s) => s.title3DAnimate);
-  const titleFontScale = useCodaStore((s) => s.titleFontScale);
+  const titleText       = useCodaStore((s) => s.titleText);
+  const titleSubtext    = useCodaStore((s) => s.titleSubtext);
+  const titleRender3D   = useCodaStore((s) => s.titleRender3D);
+  const title3DPreset   = useCodaStore((s) => s.title3DPreset);
+  const title3DAnimate  = useCodaStore((s) => s.title3DAnimate);
+  const titleFontScale  = useCodaStore((s) => s.titleFontScale);
+  const titleFontPreset = useCodaStore((s) => s.titleFontPreset);
 
   if (!titleText || !titleRender3D) return null;
 
@@ -248,6 +257,7 @@ export default function TitleLayer() {
       presetName={title3DPreset ?? 'gold'}
       animate={title3DAnimate ?? 'breathing'}
       fontScale={titleFontScale ?? 1.0}
+      fontPreset={titleFontPreset ?? 'lofi'}
     />
   );
 }

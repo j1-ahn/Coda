@@ -379,6 +379,60 @@ async def get_progress(job_id: str) -> ProgressResponse:
     )
 
 
+class HealthResponse(BaseModel):
+    status: str                        # "ok" | "degraded" | "error"
+    ffmpeg_available: bool
+    ffmpeg_version: Optional[str] = None
+    cuda_available: bool
+    loaded_models: List[str] = []
+    errors: List[str] = []
+
+
+@router.get("/health", response_model=HealthResponse)
+async def health_check() -> HealthResponse:
+    """STT 서비스 상태 확인 — ffmpeg, CUDA, 모델 캐시를 점검합니다."""
+    errors: List[str] = []
+    ffmpeg_ok = False
+    ffmpeg_ver = None
+
+    # ffmpeg 확인
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"], capture_output=True, timeout=10
+        )
+        if result.returncode == 0:
+            ffmpeg_ok = True
+            first_line = result.stdout.decode("utf-8", errors="replace").split("\n")[0]
+            ffmpeg_ver = first_line.strip()
+        else:
+            errors.append("ffmpeg가 설치되어 있지만 실행에 실패했습니다.")
+    except FileNotFoundError:
+        errors.append("ffmpeg를 찾을 수 없습니다. PATH에 설치되어 있는지 확인하세요.")
+    except Exception as exc:
+        errors.append(f"ffmpeg 확인 중 오류: {exc}")
+
+    cuda_ok = torch.cuda.is_available()
+    if not cuda_ok:
+        errors.append("CUDA가 사용 불가합니다. CPU fallback으로 동작합니다.")
+
+    loaded = list(_model_cache.keys())
+
+    status = "ok"
+    if errors and ffmpeg_ok:
+        status = "degraded"
+    elif not ffmpeg_ok:
+        status = "error"
+
+    return HealthResponse(
+        status=status,
+        ffmpeg_available=ffmpeg_ok,
+        ffmpeg_version=ffmpeg_ver,
+        cuda_available=cuda_ok,
+        loaded_models=loaded,
+        errors=errors,
+    )
+
+
 @router.get("/vram", response_model=VRAMResponse)
 async def get_vram_stats() -> VRAMResponse:
     """현재 VRAM 사용 현황을 반환합니다."""

@@ -72,11 +72,13 @@ def encode(
     nvenc_mode: str = "auto",   # "auto" | "nvenc" | "cpu"
     ffmpeg_path: Optional[str] = None,  # None = use system PATH
     on_progress: Optional[Callable[[float], None]] = None,
+    subtitle_path: Optional[Path] = None,  # ASS subtitle file for burn-in
 ) -> None:
     """
     Encode JPEG frame sequence + optional audio into H.264 MP4.
 
     frames_dir must contain files named frame_00000.jpg, frame_00001.jpg, …
+    subtitle_path: if provided, burns ASS subtitles into the video.
     """
     use_nvenc = (
         nvenc_mode == "nvenc" or
@@ -99,11 +101,18 @@ def encode(
     if has_audio:
         cmd += ["-i", str(audio_path)]
 
+    # Build video filter chain
+    vf_parts = [f"scale={width}:{height}"]
+    if subtitle_path and subtitle_path.exists():
+        # Escape path for FFmpeg filter (backslashes → forward slashes, colons escaped)
+        ass_escaped = str(subtitle_path.resolve()).replace("\\", "/").replace(":", "\\:")
+        vf_parts.append(f"ass='{ass_escaped}'")
+
     cmd += [
         "-c:v", codec,
         "-preset", preset,
         "-b:v", bitrate,
-        "-vf", f"scale={width}:{height}",
+        "-vf", ",".join(vf_parts),
         "-pix_fmt", "yuv420p",
     ]
 

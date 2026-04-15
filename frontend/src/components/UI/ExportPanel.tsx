@@ -6,6 +6,7 @@ import {
   startCompositeRender,
   downloadBlob,
   type CompositeRenderHandle,
+  type PlaylistTrack,
 } from '@/lib/compositeRenderer';
 
 // ---------------------------------------------------------------------------
@@ -54,7 +55,7 @@ export default function ExportPanel() {
   const [jobStatus, setJobStatus] = useState<JobStatus>({ phase: 'idle' });
   const renderHandleRef = useRef<CompositeRenderHandle | null>(null);
 
-  // ── Render start ─────────────────────────────────────────────────────────
+  // ── Render start (단일 트랙) ──────────────────────────────────────────────
 
   const handleRender = useCallback(async () => {
     const container = document.getElementById('studio-canvas-container');
@@ -105,6 +106,77 @@ export default function ExportPanel() {
       renderHandleRef.current = null;
     }
   }, [audioTracks, activeAudioTrackId]);
+
+  // ── Render start (플레이리스트 전체) ────────────────────────────────────
+
+  const handlePlaylistRender = useCallback(async () => {
+    const container = document.getElementById('studio-canvas-container');
+    if (!container) {
+      setJobStatus({ phase: 'error', message: 'canvas container를 찾을 수 없습니다.' });
+      return;
+    }
+
+    if (audioTracks.length === 0) {
+      setJobStatus({ phase: 'error', message: '플레이리스트에 트랙이 없습니다.' });
+      return;
+    }
+
+    const rect = container.getBoundingClientRect();
+    const w = Math.round(rect.width)  || 1920;
+    const h = Math.round(rect.height) || 1080;
+
+    // 전체 오디오 트랙을 PlaylistTrack으로 변환
+    const playlist: PlaylistTrack[] = audioTracks
+      .filter((t) => t.url)
+      .map((t) => ({
+        src: t.url!,
+        durationSec: t.durationSec ?? 0,
+        title: t.fileName ?? t.id,
+      }));
+
+    if (playlist.length === 0) {
+      setJobStatus({ phase: 'error', message: '재생 가능한 트랙이 없습니다.' });
+      return;
+    }
+
+    setJobStatus({ phase: 'rendering', progress: 0, message: `플레이리스트 렌더 (1/${playlist.length})` });
+
+    const [handle, renderPromise] = startCompositeRender(container, {
+      width: w,
+      height: h,
+      fps: 30,
+      audioPlaylist: playlist,
+      onProgress: (p) =>
+        setJobStatus({
+          phase: 'rendering',
+          progress: p,
+          message: `플레이리스트 렌더 중... ${Math.round(p * 100)}%`,
+        }),
+      onTrackChange: (idx, track) =>
+        setJobStatus({
+          phase: 'rendering',
+          progress: 0,
+          message: `트랙 ${idx + 1}/${playlist.length}: ${track.title ?? ''}`,
+        }),
+    });
+    renderHandleRef.current = handle;
+
+    try {
+      const blob = await renderPromise;
+      if (!blob) {
+        setJobStatus({ phase: 'error', message: '렌더 취소됨' });
+        return;
+      }
+      const ext = blob.type.includes('webm') ? 'webm' : 'mp4';
+      const filename = `coda_playlist_${Date.now()}.${ext}`;
+      setJobStatus({ phase: 'done', blob, filename });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '렌더 오류 발생';
+      setJobStatus({ phase: 'error', message: msg });
+    } finally {
+      renderHandleRef.current = null;
+    }
+  }, [audioTracks]);
 
   const handleStop = useCallback(() => {
     renderHandleRef.current?.stop();
@@ -180,13 +252,24 @@ export default function ExportPanel() {
 
         {/* Action button */}
         {jobStatus.phase === 'idle' && (
-          <button
-            onClick={handleRender}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest bg-ink-900 text-cream-100 hover:bg-ink-700 transition-colors whitespace-nowrap"
-          >
-            <PlayIcon className="w-3.5 h-3.5" />
-            렌더 시작
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRender}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest bg-ink-900 text-cream-100 hover:bg-ink-700 transition-colors whitespace-nowrap"
+            >
+              <PlayIcon className="w-3.5 h-3.5" />
+              렌더
+            </button>
+            {audioTracks.length > 1 && (
+              <button
+                onClick={handlePlaylistRender}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest border border-ink-500 text-ink-700 hover:bg-cream-300 transition-colors whitespace-nowrap"
+              >
+                <PlayIcon className="w-3.5 h-3.5" />
+                전곡 렌더
+              </button>
+            )}
+          </div>
         )}
 
         {jobStatus.phase === 'rendering' && (

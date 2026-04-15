@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ── march2004.com faithful token system ─────────────────────────── */
+/* ── march2004.com — faithful reproduction ───────────────────────── */
 :root {
   --bg:    #fafafa;
   --fg:    #212121;
@@ -13,11 +13,7 @@
 }
 
 @media (max-width: 599px) {
-  :root {
-    --cols: 2;
-    --gap:  15px;
-    --pad:  15px;
-  }
+  :root { --cols: 2; --gap: 15px; --pad: 15px; }
 }
 @media (min-width: 1440px) {
   :root { --cols: 4; }
@@ -31,7 +27,6 @@
   --color-fg:    var(--fg);
   --color-muted: var(--muted);
   --color-line:  var(--line);
-  --font-sans:   var(--font-geist-sans);
   --font-mono:   var(--font-geist-mono);
 }
 
@@ -41,16 +36,17 @@
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--font-geist-mono), 'SF Mono', 'Fira Code', monospace;
-  font-size: clamp(11px, 2vw, 12px);
-  line-height: 1.5;
+  font-family: var(--font-geist-mono), 'SF Mono', monospace;
+  font-size: clamp(10px, 1.6vw, 11px);
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'tnum' 1, 'kern' 1;
+  letter-spacing: 0.01em;
   overflow-x: hidden;
 }
 
-/* ── Grid — march2004 style ────────────────────────────────────────── */
+/* ── Grid ──────────────────────────────────────────────────────────── */
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(var(--cols), 1fr);
@@ -59,7 +55,7 @@ body {
   padding-bottom: calc(var(--bar-h) + var(--pad) * 2);
 }
 
-/* ── Card — square, no decoration ──────────────────────────────────── */
+/* ── Card ──────────────────────────────────────────────────────────── */
 .card {
   position: relative;
   cursor: pointer;
@@ -70,7 +66,7 @@ body {
   position: relative;
   aspect-ratio: 1;
   overflow: hidden;
-  background: #111;
+  background: #0a0a0a;
 }
 
 .card-cover img {
@@ -78,86 +74,83 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: opacity 0.5s cubic-bezier(0.15, 0, 0.25, 1);
 }
 
-/* Hover: blur overlay with action */
+/* Hover: frosted overlay — softer, march2004 style */
 .card-hover {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 20px;
   opacity: 0;
-  backdrop-filter: blur(4px);
-  background: rgba(250, 250, 250, 0.55);
-  transition: opacity 0.35s cubic-bezier(0.15, 0, 0.25, 1);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: rgba(250, 250, 250, 0.45);
+  transition: opacity 0.4s cubic-bezier(0.15, 0, 0.25, 1);
 }
 
-.card:hover .card-hover {
-  opacity: 1;
-}
+.card:hover .card-hover { opacity: 1; }
 
-.card-hover button {
+.card-hover button,
+.card-hover .hover-link {
   background: none;
   border: none;
   cursor: pointer;
   color: var(--fg);
   font-family: inherit;
-  font-size: clamp(9px, 1.5vw, 10px);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: clamp(9px, 1.4vw, 10px);
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  text-decoration: none;
   padding: 0;
 }
 
-.card-hover button + button,
-.card-hover .hover-link {
-  margin-left: 16px;
-}
-
-.hover-link {
-  color: var(--fg);
-  text-decoration: none;
-  font-size: clamp(9px, 1.5vw, 10px);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-family: inherit;
-}
-
-/* Meta below cover — catalog + title only */
+/* Meta — minimal, faded, below cover */
 .card-meta {
-  padding: 8px 0 0;
+  padding: 6px 0 0;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 6px;
 }
 
 .card-meta-left {
   display: flex;
   gap: 8px;
   align-items: baseline;
+  min-width: 0;
+  overflow: hidden;
 }
 
-/* ── Typography — extreme restraint ────────────────────────────────── */
+/* ── Typography ────────────────────────────────────────────────────── */
 .t-cat {
-  font-size: clamp(9px, 1.4vw, 10px);
+  font-size: clamp(8px, 1.2vw, 9px);
   color: var(--muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
 }
 
 .t-title {
-  font-size: clamp(10px, 1.6vw, 11px);
+  font-size: clamp(9px, 1.4vw, 10px);
   color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .t-dur {
-  font-size: clamp(9px, 1.4vw, 10px);
+  font-size: clamp(8px, 1.2vw, 9px);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
-/* ── Staggered fade-in ─────────────────────────────────────────────── */
+/* ── Staggered fade ────────────────────────────────────────────────── */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -166,33 +159,33 @@ body {
   animation: fadeUp 0.75s cubic-bezier(0.15, 0, 0.25, 1) forwards;
 }
 
-/* ── Playing indicator ─────────────────────────────────────────────── */
-@keyframes pulse-dot {
+/* ── Playing dot ───────────────────────────────────────────────────── */
+@keyframes pulseDot {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  50% { opacity: 0.2; }
 }
 
 .playing-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--fg);
-  animation: pulse-dot 1.2s ease-in-out infinite;
+  animation: pulseDot 1.4s ease-in-out infinite;
 }
 
-/* ── Header — sticky, ultra-thin ───────────────────────────────────── */
+/* ── Header — nearly invisible ─────────────────────────────────────── */
 .site-header {
   position: sticky;
   top: 0;
   z-index: 50;
   background: var(--bg);
-  padding: 14px var(--pad);
+  padding: 12px var(--pad) 8px;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
 }
 
-/* ── Bottom bar — fixed, 42px ──────────────────────────────────────── */
+/* ── Bottom bar ────────────────────────────────────────────────────── */
 .bottom-bar {
   position: fixed;
   bottom: 0;
@@ -204,7 +197,7 @@ body {
   display: flex;
   align-items: center;
   padding: 0 var(--pad);
-  gap: 12px;
+  gap: 10px;
   z-index: 100;
 }
 
@@ -223,11 +216,10 @@ body {
   transition: width 0.15s linear;
 }
 
-/* ── Utility ───────────────────────────────────────────────────────── */
+/* ── Nav link ──────────────────────────────────────────────────────── */
 .nav-link {
-  font-size: clamp(9px, 1.4vw, 10px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: clamp(8px, 1.2vw, 9px);
+  letter-spacing: 0.05em;
   color: var(--muted);
   text-decoration: none;
   background: none;
@@ -238,7 +230,4 @@ body {
   transition: color 0.2s;
 }
 
-.nav-link:hover,
-.nav-link[data-active="true"] {
-  color: var(--fg);
-}
+.nav-link:hover { color: var(--fg); }

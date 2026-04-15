@@ -37,6 +37,12 @@ class CreateSessionRequest(BaseModel):
     total_frames: int = 0
 
 
+class SubtitleSegment(BaseModel):
+    start: float
+    end: float
+    text: str
+
+
 class EncodeRequest(BaseModel):
     fps: int = 30
     width: int = 1920
@@ -46,6 +52,11 @@ class EncodeRequest(BaseModel):
     nvenc_mode: Literal["auto", "nvenc", "cpu"] = "auto"
     ffmpeg_path: Optional[str] = None   # None = use system PATH
     output_path: Optional[str] = None   # None = use default render_tmp/
+    # Subtitle burn-in
+    subtitle_segments: Optional[List[SubtitleSegment]] = None
+    subtitle_style: Optional[str] = None   # ASS style name or preset: clean|mist|slab|glow|outline
+    subtitle_position: Optional[str] = None  # bottom|center|right-center
+    subtitle_font_size: Optional[int] = None
     # Gallery export metadata
     gallery_export: bool = False
     gallery_title: Optional[str] = None
@@ -161,6 +172,19 @@ async def _run_encode(session_id: str, req: EncodeRequest) -> None:
             True,
         )
 
+        # Generate subtitle file if segments provided
+        subtitle_path = None
+        if req.subtitle_segments:
+            subtitle_path = _write_subtitle_file(
+                tmp_dir=tmp,
+                segments=req.subtitle_segments,
+                style_name=req.subtitle_style or "clean",
+                position=req.subtitle_position or "bottom",
+                font_size=req.subtitle_font_size,
+                width=req.width,
+                height=req.height,
+            )
+
         # Always produce 16:9 first
         await asyncio.get_event_loop().run_in_executor(
             None,
@@ -175,6 +199,7 @@ async def _run_encode(session_id: str, req: EncodeRequest) -> None:
                 nvenc_mode=req.nvenc_mode,
                 ffmpeg_path=req.ffmpeg_path,
                 on_progress=on_progress_169,
+                subtitle_path=subtitle_path,
             ),
         )
         session.output_files["16-9"] = out_169.name
@@ -468,3 +493,150 @@ def _export_gallery_metadata(
     meta_path = out_dir / "gallery-metadata.json"
     meta_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info("Session %s: gallery metadata → %s", session_id, meta_path)
+
+
+# ── Subtitle burn-in (ASS format) ────────────────────────────────────────────
+
+# ASS style presets matching LyricHTMLOverlay.tsx
+_ASS_STYLE_PRESETS = {
+    "clean": {
+        "fontname": "Inter",
+        "fontsize": 26,
+        "primary": "&H00FFFFFF",
+        "outline": 2,
+        "shadow": 1,
+        "bold": 0,
+        "alignment": 2,  # bottom-center
+    },
+    "mist": {
+        "fontname": "Inter",
+        "fontsize": 24,
+        "primary": "&H8CFFFFFF",
+        "outline": 0,
+        "shadow": 0,
+        "bold": 0,
+        "alignment": 2,
+    },
+    "slab": {
+        "fontname": "Oswald",
+        "fontsize": 28,
+        "primary": "&H00E2EBF0",
+        "outline": 2,
+        "shadow": 0,
+        "bold": 1,
+        "alignment": 2,
+    },
+    "glow": {
+        "fontname": "Inter",
+        "fontsize": 26,
+        "primary": "&H00FFFFFF",
+        "outline": 3,
+        "shadow": 2,
+        "bold": 0,
+        "alignment": 2,
+    },
+    "outline": {
+        "fontname": "Inter",
+        "fontsize": 26,
+        "primary": "&H00FFFFFF",
+        "outline": 3,
+        "shadow": 0,
+        "bold": 1,
+        "alignment": 2,
+    },
+    "kr": {
+        "fontname": "Pretendard",
+        "fontsize": 26,
+        "primary": "&H00DAE3E8",
+        "outline": 2,
+        "shadow": 1,
+        "bold": 0,
+        "alignment": 2,
+    },
+}
+
+# Position → ASS alignment number
+_POSITION_ALIGNMENT = {
+    "bottom": 2,         # bottom-center
+    "center": 5,         # middle-center
+    "right-center": 6,   # middle-right
+}
+
+
+def _fmt_ass_time(seconds: float) -> str:
+    """Convert seconds to ASS time format: H:MM:SS.cc"""
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    cs = int((seconds % 1) * 100)
+    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
+
+
+def _generate_ass_subtitle(
+    segments: List[SubtitleSegment],
+    style_name: str = "clean",
+    position: str = "bottom",
+    font_size: Optional[int] = None,
+    width: int = 1920,
+    height: int = 1080,
+) -> str:
+    """Generate ASS subtitle content from Whisper segments."""
+    preset = _ASS_STYLE_PRESETS.get(style_name, _ASS_STYLE_PRESETS["clean"])
+    alignment = _POSITION_ALIGNMENT.get(position, 2)
+    fs = font_size or preset["fontsize"]
+
+    # Scale font size for video resolution
+    scale = height / 1080.0
+    scaled_fs = int(fs * scale)
+
+    ass_content = f"""[Script Info]
+Title: Coda Studio Subtitles
+ScriptType: v4.00+
+PlayResX: {width}
+PlayResY: {height}
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,{preset['fontname']},{scaled_fs},{preset['primary']},&H000000FF,&H00000000,&H80000000,{preset['bold']},0,0,0,100,100,0,0,1,{preset['outline']},{preset['shadow']},{alignment},40,40,60,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+
+    for seg in segments:
+        text = seg.text.strip().replace("\n", "\\N")
+        if text:
+            start = _fmt_ass_time(seg.start)
+            end = _fmt_ass_time(seg.end)
+            ass_content += f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n"
+
+    return ass_content
+
+
+def _write_subtitle_file(
+    tmp_dir: Path,
+    segments: List[SubtitleSegment],
+    style_name: str = "clean",
+    position: str = "bottom",
+    font_size: Optional[int] = None,
+    width: int = 1920,
+    height: int = 1080,
+) -> Optional[Path]:
+    """Write ASS subtitle file to temp dir, return path or None if no segments."""
+    if not segments:
+        return None
+
+    ass_content = _generate_ass_subtitle(
+        segments=segments,
+        style_name=style_name,
+        position=position,
+        font_size=font_size,
+        width=width,
+        height=height,
+    )
+
+    ass_path = tmp_dir / "subtitles.ass"
+    ass_path.write_text(ass_content, encoding="utf-8")
+    logger.info("Subtitle file written: %s (%d segments)", ass_path, len(segments))
+    return ass_path

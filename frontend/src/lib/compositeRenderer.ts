@@ -13,7 +13,20 @@
  *   MediaRecorder(video stream) + AudioContext(audio stream)
  *           ↓
  *       WebM Blob
+ *
+ * v2: 플레이리스트 연속 렌더 지원
+ *   - audioPlaylist: 여러 트랙을 순서대로 재생하며 녹화
+ *   - 기존 단일 audioSrc도 호환 유지
  */
+
+export interface PlaylistTrack {
+  /** 오디오 src URL (object URL 또는 파일 URL) */
+  src: string;
+  /** 트랙 길이(초) — 0이면 오디오 자연 종료까지 */
+  durationSec: number;
+  /** 트랙 제목 (진행률 콜백용) */
+  title?: string;
+}
 
 export interface CompositeRenderOptions {
   /** 출력 해상도 (컨테이너 CSS 크기 기준) */
@@ -23,10 +36,14 @@ export interface CompositeRenderOptions {
   fps?: number;
   /** 녹화 길이(초). 0이면 stopRender() 호출 전까지 무한 녹화 */
   durationSec?: number;
-  /** 오디오 src URL (object URL) — null이면 무음 */
+  /** 오디오 src URL (object URL) — null이면 무음 (단일 트랙 모드) */
   audioSrc?: string | null;
+  /** 플레이리스트 연속 렌더 — audioSrc보다 우선 */
+  audioPlaylist?: PlaylistTrack[];
   /** 진행률 콜백 0–1 */
   onProgress?: (progress: number) => void;
+  /** 트랙 전환 콜백 (플레이리스트 모드) */
+  onTrackChange?: (trackIndex: number, track: PlaylistTrack) => void;
 }
 
 export interface CompositeRenderHandle {
@@ -51,12 +68,29 @@ export function startCompositeRender(
     fps = 30,
     durationSec = 0,
     audioSrc = null,
+    audioPlaylist,
     onProgress,
+    onTrackChange,
   } = opts;
 
   let stopped = false;
   let resolveBlob: (b: Blob | null) => void = () => {};
   const promise = new Promise<Blob | null>((res) => { resolveBlob = res; });
+
+  // 플레이리스트 모드: audioPlaylist 우선, 없으면 단일 트랙 변환
+  const playlist: PlaylistTrack[] = audioPlaylist && audioPlaylist.length > 0
+    ? audioPlaylist
+    : audioSrc
+      ? [{ src: audioSrc, durationSec: durationSec || 0 }]
+      : [];
+
+  // totalDuration: durationSec===0 트랙은 알 수 없으므로 Infinity로 취급
+  const hasUnknownDuration = playlist.some((t) => t.durationSec <= 0);
+  const totalDuration = playlist.length > 0
+    ? hasUnknownDuration
+      ? 0  // 0 = unknown → totalMs will be Infinity
+      : playlist.reduce((sum, t) => sum + t.durationSec, 0)
+    : durationSec;
 
   (async () => {
     // ── 1. 컨테이너에서 canvas 목록 수집 ──────────────────────────────
@@ -72,8 +106,6 @@ export function startCompositeRender(
     const ctx = composite.getContext('2d')!;
 
     // ── 3. 비디오 스트림 ────────────────────────────────────────────────
-    // captureStream은 OffscreenCanvas에서 지원되지 않으므로
-    // 일반 canvas를 중간 단계로 사용한다.
     const bridge = document.createElement('canvas');
     bridge.width = width;
     bridge.height = height;
@@ -81,21 +113,46 @@ export function startCompositeRender(
 
     const videoStream = (bridge as HTMLCanvasElement & { captureStream(fps: number): MediaStream }).captureStream(fps);
 
-    // ── 4. 오디오 스트림 ────────────────────────────────────────────────
-    const audioTracks: MediaStreamTrack[] = [];
-    let audioEl: HTMLAudioElement | null = null;
+    // ── 4. 오디오 스트림 셋업 ──────────────────────────────────────────
     let audioCtx: AudioContext | null = null;
     let audioDestNode: MediaStreamAudioDestinationNode | null = null;
+    let currentAudioEl: HTMLAudioElement | null = null;
+    let currentSrcNode: MediaElementAudioSourceNode | null = null;
+    const audioTracks: MediaStreamTrack[] = [];
 
-    if (audioSrc) {
+    if (playlist.length > 0) {
       audioCtx = new AudioContext();
       audioDestNode = audioCtx.createMediaStreamDestination();
-      audioEl = new Audio(audioSrc);
-      audioEl.currentTime = 0;
-      const srcNode = audioCtx.createMediaElementSource(audioEl);
-      srcNode.connect(audioDestNode);
-      srcNode.connect(audioCtx.destination); // 스피커 모니터링도 유지
       audioTracks.push(...audioDestNode.stream.getAudioTracks());
+    }
+
+    // 트랙이 자연 종료되었는지 추적 (durationSec===0 트랙용)
+    let trackEndedNaturally = false;
+
+    // 트랙 재생 함수 (플레이리스트 순회용)
+    async function playTrack(track: PlaylistTrack): Promise<void> {
+      if (!audioCtx || !audioDestNode) return;
+
+      // 이전 소스 정리
+      if (currentSrcNode) {
+        currentSrcNode.disconnect();
+      }
+      if (currentAudioEl) {
+        currentAudioEl.onended = null;
+        currentAudioEl.pause();
+        currentAudioEl.src = '';
+      }
+
+      trackEndedNaturally = false;
+
+      currentAudioEl = new Audio(track.src);
+      currentAudioEl.currentTime = 0;
+      currentAudioEl.onended = () => { trackEndedNaturally = true; };
+      currentSrcNode = audioCtx.createMediaElementSource(currentAudioEl);
+      currentSrcNode.connect(audioDestNode);
+      currentSrcNode.connect(audioCtx.destination); // 스피커 모니터링 유지
+
+      await currentAudioEl.play().catch(() => {});
     }
 
     // ── 5. MediaRecorder 설정 ──────────────────────────────────────────
@@ -119,23 +176,57 @@ export function startCompositeRender(
 
     recorder.start(200); // 200ms 단위로 chunk 수집
 
-    // ── 6. 오디오 재생 ─────────────────────────────────────────────────
-    if (audioEl) {
-      await audioEl.play().catch(() => {});
+    // ── 6. 플레이리스트 순차 재생 ─────────────────────────────────────
+    let currentTrackIdx = 0;
+    let trackStartTime = performance.now();
+
+    if (playlist.length > 0) {
+      onTrackChange?.(0, playlist[0]);
+      await playTrack(playlist[0]);
     }
 
     // ── 7. RAF 합성 루프 ────────────────────────────────────────────────
-    const startTime = performance.now();
-    const totalMs = durationSec > 0 ? durationSec * 1000 : Infinity;
+    const renderStartTime = performance.now();
+    const totalMs = totalDuration > 0 ? totalDuration * 1000 : Infinity;
 
-    const drawFrame = () => {
+    const drawFrame = async () => {
       if (stopped) {
         finish();
         return;
       }
 
-      const elapsed = performance.now() - startTime;
-      if (elapsed >= totalMs) {
+      const elapsed = performance.now() - renderStartTime;
+
+      // 전체 종료 체크
+      if (totalMs !== Infinity && elapsed >= totalMs) {
+        finish();
+        return;
+      }
+
+      // 플레이리스트 트랙 전환 체크
+      if (playlist.length > 0 && currentTrackIdx < playlist.length) {
+        const trackElapsed = performance.now() - trackStartTime;
+        const trackDurMs = playlist[currentTrackIdx].durationSec * 1000;
+
+        // 트랙 종료 조건: 명시적 duration 초과 OR 오디오 자연 종료
+        const shouldAdvance =
+          trackEndedNaturally || (trackDurMs > 0 && trackElapsed >= trackDurMs);
+
+        if (shouldAdvance) {
+          currentTrackIdx++;
+          if (currentTrackIdx >= playlist.length) {
+            // 모든 트랙 완료
+            finish();
+            return;
+          }
+          trackStartTime = performance.now();
+          onTrackChange?.(currentTrackIdx, playlist[currentTrackIdx]);
+          await playTrack(playlist[currentTrackIdx]);
+        }
+      }
+
+      // 단일 트랙(playlist.length===1)이 자연 종료된 경우
+      if (playlist.length === 1 && trackEndedNaturally && totalMs === Infinity) {
         finish();
         return;
       }
@@ -154,15 +245,20 @@ export function startCompositeRender(
       bridgeCtx.drawImage(composite, 0, 0);
 
       // 진행률 콜백
-      if (onProgress && durationSec > 0) {
-        onProgress(Math.min(elapsed / totalMs, 1));
+      if (onProgress) {
+        if (totalMs !== Infinity) {
+          onProgress(Math.min(elapsed / totalMs, 1));
+        } else if (playlist.length > 0) {
+          // unknown duration: 트랙 인덱스 기반 대략적 진행률
+          onProgress(currentTrackIdx / playlist.length);
+        }
       }
 
       requestAnimationFrame(drawFrame);
     };
 
     const finish = () => {
-      if (audioEl) { audioEl.pause(); audioEl.src = ''; }
+      if (currentAudioEl) { currentAudioEl.pause(); currentAudioEl.src = ''; }
       if (audioCtx) audioCtx.close();
       recorder.stop();
     };
