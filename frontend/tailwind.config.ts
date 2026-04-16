@@ -24,6 +24,13 @@ const config: Config = {
           300: '#9b9891',
           100: '#ccc9c4',
         },
+        accent: {
+          DEFAULT: '#c4a882',
+          light: '#d4bc9e',
+          dark: '#a88c6a',
+          50: '#faf6f0',
+          100: '#f0e8da',
+        },
         tan: '#c4a882',
         // Keep legacy tokens for Canvas/WebGL components
         'coda-bg': '#0a0a0a',

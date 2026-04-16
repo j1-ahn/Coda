@@ -206,8 +206,8 @@ export default function GraphicsPanel() {
             cursor-pointer flex flex-col items-center justify-center gap-1 py-4 bg-cream-200/40"
         >
           <span className="text-ink-300 text-xl">+</span>
-          <span className="label-caps text-[9px] text-ink-400">이미지/영상 여러 장 추가</span>
-          <span className="text-[9px] text-ink-300">드래그 또는 클릭 · jpg png gif mp4</span>
+          <span className="label-caps text-[9px] text-ink-400">Add images or video</span>
+          <span className="text-[9px] text-ink-300">Drag & drop or click · jpg png gif mp4</span>
         </div>
         <input
           ref={multiInputRef}
@@ -270,15 +270,15 @@ export default function GraphicsPanel() {
               }}
               className="label-caps text-[9px] text-ink-400 hover:text-ink-900 transition-colors ml-1"
             >
-              + 씬 추가
+              + Add Scene
             </button>
             {/* 전체 삭제 */}
             <button
               onClick={() => setConfirmClear(true)}
               className="label-caps text-[9px] text-ink-300 hover:text-red-500 transition-colors ml-0.5"
-              title="씬 전체 삭제"
+              title="Clear all scenes"
             >
-              전체삭제
+              Clear All
             </button>
           </div>
         </div>
@@ -328,7 +328,7 @@ export default function GraphicsPanel() {
                 {/* 씬 정보 */}
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="label-caps text-[9px] text-ink-500 truncate">
-                    {idx + 1}. {scene.background.fileName ?? '배경 없음'}
+                    {idx + 1}. {scene.background.fileName ?? 'No background'}
                   </span>
                   <span className="text-[8px] text-ink-300">
                     {scene.transition?.type ?? 'fade'} · {((scene.transition?.durationMs ?? 800) / 1000).toFixed(1)}s
@@ -341,7 +341,7 @@ export default function GraphicsPanel() {
                     <button
                       onClick={(e) => { e.stopPropagation(); singleInputRef.current?.click(); }}
                       className="w-5 h-5 flex items-center justify-center text-ink-400 hover:text-ink-900 transition-colors text-[9px] border border-cream-300 hover:border-ink-500"
-                      title="배경 교체"
+                      title="Replace"
                     >
                       ↑
                     </button>
@@ -350,7 +350,7 @@ export default function GraphicsPanel() {
                     <button
                       onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(scene.id); }}
                       className="w-5 h-5 flex items-center justify-center text-ink-300 hover:text-red-500 transition-colors text-sm leading-none"
-                      title="씬 삭제"
+                      title="Delete scene"
                     >
                       ×
                     </button>
@@ -381,12 +381,12 @@ export default function GraphicsPanel() {
                 updateSceneTransition(activeSceneId, { type: 'cut', durationMs: 0 });
               }}
               className="text-[8px] text-ink-300 hover:text-red-400 transition-colors"
-              title="선택 씬 트랜지션 해제"
+              title="Remove transition"
             >
-              선택 해제
+              Reset
             </button>
             <span className="text-[8px] text-ink-200">·</span>
-            <span className="text-[9px] text-ink-300">선택 씬에 적용</span>
+            <span className="text-[9px] text-ink-300">Apply to selected</span>
           </div>
         </div>
 
@@ -445,14 +445,14 @@ export default function GraphicsPanel() {
             className="flex-1 py-1 label-caps text-[9px] border border-cream-300 text-ink-400
               hover:border-ink-500 hover:text-ink-900 transition-colors"
           >
-            전체 씬 동일 적용
+            Apply to all
           </button>
           <button
             onClick={() => scenes.forEach((s) => updateSceneTransition(s.id, { type: 'cut', durationMs: 0 }))}
             className="flex-1 py-1 label-caps text-[9px] border border-cream-300 text-ink-300
               hover:border-red-400 hover:text-red-400 transition-colors"
           >
-            전체 씬 해제
+            Reset all
           </button>
         </div>
       </div>

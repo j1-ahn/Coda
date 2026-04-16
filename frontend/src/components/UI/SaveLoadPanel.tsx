@@ -107,9 +107,9 @@ export default function SaveLoadPanel() {
   };
 
   const saveLabel =
-    saveStatus === 'saving' ? '저장 중…'
-    : saveStatus === 'saved'  ? '저장됨 ✓'
-    : saveStatus === 'error'  ? '오류 ✕'
+    saveStatus === 'saving' ? 'Saving…'
+    : saveStatus === 'saved'  ? 'Saved ✓'
+    : saveStatus === 'error'  ? 'Error ✕'
     : 'SAVE';
 
   return (
@@ -141,15 +141,15 @@ export default function SaveLoadPanel() {
       {loadOpen && (
         <div className="absolute right-0 top-full mt-1 w-72 bg-cream-100 border border-cream-300 shadow-lg z-50">
           <div className="px-3 py-2 border-b border-cream-300">
-            <span className="label-caps text-ink-500">저장된 프로젝트</span>
+            <span className="label-caps text-ink-500">Saved Projects</span>
           </div>
 
           {loading && (
-            <div className="px-3 py-4 text-center label-caps text-ink-300 animate-pulse">불러오는 중…</div>
+            <div className="px-3 py-4 text-center label-caps text-ink-300 animate-pulse">Loading…</div>
           )}
 
           {!loading && projects.length === 0 && (
-            <div className="px-3 py-4 text-center label-caps text-ink-300">저장된 프로젝트 없음</div>
+            <div className="px-3 py-4 text-center label-caps text-ink-300">No saved projects</div>
           )}
 
           {!loading && projects.map((p) => (
@@ -165,7 +165,7 @@ export default function SaveLoadPanel() {
               <button
                 onClick={(e) => { e.stopPropagation(); setConfirmDeletePid(p.project_id); }}
                 className="opacity-0 group-hover:opacity-100 text-ink-300 hover:text-red-500 transition-all text-sm ml-2 shrink-0"
-                title="삭제"
+                title="Delete"
               >
                 ×
               </button>
@@ -179,7 +179,7 @@ export default function SaveLoadPanel() {
           )}
 
           <div className="px-3 py-2 text-[9px] text-ink-300 label-caps">
-            * 미디어 파일(이미지·오디오)은 재업로드 필요
+            * Media files require re-upload
           </div>
         </div>
       )}

@@ -9,6 +9,7 @@
   --foreground: #1a1a16;
   --surface: #e4e0d8;
   --border: #d4cfc6;
+  --accent: #c4a882;
 }
 
 * {
@@ -35,6 +36,26 @@ body {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #6b6760;
+}
+
+/* Accent action button */
+.btn-accent {
+  background: #c4a882;
+  color: #1a1a16;
+  border: 1px solid #a88c6a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-accent:hover {
+  background: #d4bc9e;
+  border-color: #c4a882;
+}
+.btn-accent:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Custom scrollbar */

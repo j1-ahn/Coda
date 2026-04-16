@@ -23,7 +23,7 @@ export default function CanvasSceneInfoBar() {
       {bgName ? (
         <span className="text-[10px] text-ink-600 truncate flex-1 min-w-0">{bgName}</span>
       ) : (
-        <span className="text-[10px] text-ink-300 italic flex-1 min-w-0">배경 없음</span>
+        <span className="text-[10px] text-ink-300 italic flex-1 min-w-0">No background</span>
       )}
 
       {/* EQ preset */}

@@ -14,6 +14,7 @@ import RenderPanel from '@/components/UI/RenderPanel';
 import SettingsPanel from '@/components/UI/SettingsPanel';
 import PlaylistOverlay from '@/components/UI/PlaylistOverlay';
 import MaskDrawOverlay from '@/components/Canvas/MaskDrawOverlay';
+import CanvasEmptyState from '@/components/Canvas/CanvasEmptyState';
 import TitleHTMLOverlay from '@/components/Canvas/TitleHTMLOverlay';
 import LyricHTMLOverlay from '@/components/Canvas/LyricHTMLOverlay';
 
@@ -25,6 +26,7 @@ import STTSubtitleTab from '@/components/Tabs/STTSubtitleTab';
 
 import type { SidebarTabId } from '@/store/useCodaStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import OnboardingOverlay from '@/components/UI/OnboardingOverlay';
 
 
 const EQOverlayWidget = dynamic(
@@ -101,6 +103,7 @@ export default function Home() {
 
   return (
     <main className="flex flex-col h-screen bg-cream-100 overflow-hidden text-ink-900">
+      <OnboardingOverlay />
 
       {/* ── Header — hidden in preview mode */}
       <header className={`flex items-center justify-between px-5 py-2.5 border-b border-cream-300 shrink-0 bg-cream-100 z-10 ${previewMode ? 'hidden' : ''}`}>
@@ -192,6 +195,7 @@ export default function Home() {
               <LyricHTMLOverlay />
               {!previewMode && <EQOverlayWidget />}
               <MaskDrawOverlay />
+              <CanvasEmptyState />
             </div>
           </div>
 

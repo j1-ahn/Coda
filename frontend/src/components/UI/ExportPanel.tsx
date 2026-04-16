@@ -255,10 +255,10 @@ export default function ExportPanel() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleRender}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest bg-ink-900 text-cream-100 hover:bg-ink-700 transition-colors whitespace-nowrap"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-none text-xs uppercase tracking-widest bg-accent border-accent-dark text-ink-900 hover:bg-accent-light font-semibold transition-colors whitespace-nowrap"
             >
               <PlayIcon className="w-3.5 h-3.5" />
-              렌더
+              RENDER
             </button>
             {audioTracks.length > 1 && (
               <button
@@ -266,7 +266,7 @@ export default function ExportPanel() {
                 className="flex items-center gap-2 px-4 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest border border-ink-500 text-ink-700 hover:bg-cream-300 transition-colors whitespace-nowrap"
               >
                 <PlayIcon className="w-3.5 h-3.5" />
-                전곡 렌더
+                RENDER ALL
               </button>
             )}
           </div>
@@ -278,7 +278,7 @@ export default function ExportPanel() {
             className="flex items-center gap-2 px-6 py-2.5 rounded-none text-xs font-semibold uppercase tracking-widest border border-ink-500 text-ink-700 hover:bg-cream-300 transition-colors whitespace-nowrap"
           >
             <StopIcon className="w-3.5 h-3.5" />
-            중단
+            STOP
           </button>
         )}
 
@@ -287,14 +287,14 @@ export default function ExportPanel() {
             onClick={handleReset}
             className="px-4 py-2 rounded-none border border-cream-300 text-xs text-ink-500 hover:text-ink-900 hover:border-ink-500 transition-colors whitespace-nowrap"
           >
-            다시 렌더
+            RE-RENDER
           </button>
         )}
 
         {/* Status area */}
         <div className="flex-1 min-w-0">
           {jobStatus.phase === 'idle' && (
-            <span className="label-caps text-ink-300">렌더 준비 완료</span>
+            <span className="label-caps text-ink-300">Ready</span>
           )}
 
           {jobStatus.phase === 'rendering' && (
@@ -311,7 +311,7 @@ export default function ExportPanel() {
 
           {jobStatus.phase === 'done' && (
             <div className="flex items-center gap-3">
-              <span className="text-[11px] text-ink-700">✓ 렌더 완료</span>
+              <span className="text-[11px] text-ink-700">✓ Complete</span>
               <button
                 onClick={handleDownload}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-none border border-ink-500 text-[11px] text-ink-700 hover:bg-cream-300 transition-colors"

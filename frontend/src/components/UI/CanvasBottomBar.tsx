@@ -327,7 +327,7 @@ export default function CanvasBottomBar() {
       {/* Drag-over overlay */}
       {dragOver && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-ink-900/10 border-2 border-dashed border-ink-500 pointer-events-none">
-          <span className="label-caps text-ink-700">드롭하여 트랙 추가</span>
+          <span className="label-caps text-ink-700">Drop to add track</span>
         </div>
       )}
 
@@ -371,7 +371,7 @@ export default function CanvasBottomBar() {
           <span className="text-[9px] text-ink-400 truncate">
             {activeTrack
               ? activeTrack.fileName.replace(/\.[^.]+$/, '')
-              : 'Drop MP3 · WAV · M4A  /  클릭하여 추가'}
+              : 'Drop MP3 · WAV · M4A / Click to add'}
           </span>
         </div>
         <button
@@ -434,7 +434,7 @@ export default function CanvasBottomBar() {
       {/* Track pills */}
       <div className="flex items-center gap-1.5 px-3 py-1 overflow-x-auto min-h-[26px]">
         {audioTracks.length === 0 ? (
-          <span className="text-[9px] text-ink-300 italic">트랙 없음</span>
+          <span className="text-[9px] text-ink-300 italic">No tracks</span>
         ) : (
           audioTracks.map((track, idx) => (
             <button

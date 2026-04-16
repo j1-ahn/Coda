@@ -195,7 +195,7 @@ export default function PromptPanel() {
             className={`w-full py-2 label-caps text-[10px] border transition-colors ${
               analyzing
                 ? 'bg-cream-200 text-ink-300 border-cream-300 cursor-wait'
-                : 'border-ink-500 text-ink-500 hover:bg-ink-500 hover:text-cream-100'
+                : 'border-accent bg-accent text-ink-900 hover:bg-accent-light'
             }`}
           >
             {analyzing ? analysisPhase || 'ANALYZING…' : 'LISTEN & GENERATE'}
@@ -242,7 +242,7 @@ export default function PromptPanel() {
               ? 'bg-cream-200 text-ink-300 border-cream-300 cursor-wait'
               : !topic.trim()
                 ? 'bg-cream-200 text-ink-300 border-cream-300 cursor-not-allowed'
-                : 'border-ink-900 bg-ink-900 text-cream-100 hover:bg-ink-500'
+                : 'border-accent-dark bg-accent text-ink-900 hover:bg-accent-light'
           }`}
         >
           {loading ? 'GENERATING…' : 'GENERATE'}

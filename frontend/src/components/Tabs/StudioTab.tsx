@@ -1,52 +1,67 @@
 'use client';
 
 /**
- * StudioTab — v2 "Studio" 탭
- *
- * 배경 업로드, AI 프롬프트, VFX 파라미터, Loop 애니메이션을 한 탭에 통합.
- * 기존 PromptPanel + GraphicsPanel + VFXPanel + LoopPanel 합성.
+ * StudioTab — v2 "Studio" tab
+ * Collapsible accordion sections to reduce scroll depth.
  */
 
+import { useState } from 'react';
 import PromptPanel from '@/components/UI/PromptPanel';
 import GraphicsPanel from '@/components/UI/GraphicsPanel';
 import VFXPanel from '@/components/UI/VFXPanel';
 import LoopPanel from '@/components/UI/LoopPanel';
 
-// ---------------------------------------------------------------------------
-// Collapsible Section
-// ---------------------------------------------------------------------------
+function CollapsibleSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-cream-300 last:border-b-0">
-      <div className="flex items-center gap-2 px-3 py-2 bg-cream-200 border-b border-cream-300 shrink-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-cream-200 border-b border-cream-300 hover:bg-cream-300/50 transition-colors"
+      >
         <span className="label-caps">{title}</span>
-      </div>
-      <div>{children}</div>
+        <svg
+          className={`w-3 h-3 text-ink-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && <div>{children}</div>}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// StudioTab
-// ---------------------------------------------------------------------------
-
 export default function StudioTab() {
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-y-auto divide-y divide-cream-300">
-      {/* AI Prompt Generation */}
-      <PromptPanel />
+    <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+      <CollapsibleSection title="AI Prompt" defaultOpen>
+        <PromptPanel />
+      </CollapsibleSection>
 
-      {/* Scene Background Upload + Management */}
-      <GraphicsPanel />
+      <CollapsibleSection title="Background">
+        <GraphicsPanel />
+      </CollapsibleSection>
 
-      {/* VFX Controls */}
-      <VFXPanel />
+      <CollapsibleSection title="VFX">
+        <VFXPanel />
+      </CollapsibleSection>
 
-      {/* Loop Animation */}
-      <Section title="Loop Animation">
+      <CollapsibleSection title="Loop Animation">
         <LoopPanel />
-      </Section>
+      </CollapsibleSection>
     </div>
   );
 }
