@@ -24,13 +24,13 @@ export default function GlobalError({
       <div className="flex flex-col items-center gap-2">
         <span className="font-serif italic text-2xl">Coda Studio</span>
         <span className="text-[10px] tracking-widest uppercase text-[#9e9b94]">
-          예기치 않은 오류가 발생했습니다
+          An unexpected error occurred
         </span>
       </div>
 
       <div className="max-w-md w-full bg-white/60 border border-[#d6d3cc] p-4">
         <p className="text-xs text-[#504f4a] leading-relaxed mb-3">
-          앱 실행 중 문제가 발생했습니다. 작업 내용은 자동 저장되어 있을 수 있습니다.
+          Something went wrong while running the app. Your work may have been auto-saved.
         </p>
         <p className="text-[10px] text-[#9e9b94] font-mono break-all">
           {error.message || 'Unknown error'}
@@ -42,13 +42,13 @@ export default function GlobalError({
           onClick={reset}
           className="px-6 py-2.5 text-xs font-semibold uppercase tracking-widest bg-[#1a1a16] text-[#f5f2eb] hover:bg-[#504f4a] transition-colors"
         >
-          다시 시도
+          RETRY
         </button>
         <button
           onClick={() => window.location.reload()}
           className="px-6 py-2.5 text-xs font-semibold uppercase tracking-widest border border-[#d6d3cc] text-[#504f4a] hover:border-[#504f4a] hover:text-[#1a1a16] transition-colors"
         >
-          페이지 새로고침
+          RELOAD PAGE
         </button>
       </div>
     </div>

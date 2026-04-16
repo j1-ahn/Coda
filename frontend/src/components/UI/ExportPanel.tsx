@@ -64,9 +64,8 @@ export default function ExportPanel() {
       return;
     }
 
-    const rect = container.getBoundingClientRect();
-    const w = Math.round(rect.width)  || 1920;
-    const h = Math.round(rect.height) || 1080;
+    const w = container.offsetWidth  || 1920;
+    const h = container.offsetHeight || 1080;
 
     // 활성 오디오 트랙 URL
     const activeTrack = audioTracks.find((t) => t.id === activeAudioTrackId);
@@ -121,9 +120,8 @@ export default function ExportPanel() {
       return;
     }
 
-    const rect = container.getBoundingClientRect();
-    const w = Math.round(rect.width)  || 1920;
-    const h = Math.round(rect.height) || 1080;
+    const w = container.offsetWidth  || 1920;
+    const h = container.offsetHeight || 1080;
 
     // 전체 오디오 트랙을 PlaylistTrack으로 변환
     const playlist: PlaylistTrack[] = audioTracks

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCodaStore, hydrateFromLocalStorage, saveToLocalStorage } from '@/store/useCodaStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 
@@ -104,6 +104,22 @@ export default function Home() {
     return () => { unsub(); if (timer) clearTimeout(timer); };
   }, [autoSaveInterval]);
 
+  // Ctrl+Scroll zoom — native listener with { passive: false } to allow preventDefault
+  const canvasAreaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = canvasAreaRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const current = useCodaStore.getState().canvasZoom;
+      useCodaStore.getState().setCanvasZoom(Math.max(0.25, Math.min(3, current + delta)));
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, []);
+
   // Escape key exits focus/preview mode
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -189,13 +205,8 @@ export default function Home() {
 
           {/* Canvas area — fills remaining vertical space */}
           <div
+            ref={canvasAreaRef}
             className="flex-1 min-h-0 flex items-center justify-center bg-cream-200 overflow-hidden"
-            onWheel={(e) => {
-              if (!e.ctrlKey) return;
-              e.preventDefault();
-              const delta = e.deltaY > 0 ? -0.1 : 0.1;
-              setCanvasZoom(Math.max(0.25, Math.min(3, canvasZoom + delta)));
-            }}
           >
             <div
               id="studio-canvas-container"
@@ -246,8 +257,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Bottom bar — transport + waveform + tracks */}
-          {!previewMode && <CanvasBottomBar />}
+          {/* Bottom bar — transport + waveform + tracks (CSS hidden, not unmounted, to keep audio playing) */}
+          <div className={previewMode ? 'hidden' : ''}><CanvasBottomBar /></div>
 
           {/* Focus mode exit button — appears on hover */}
           {previewMode && (

@@ -7,7 +7,13 @@ export default function CanvasQuickToolbar() {
   const setPreviewMode = useCodaStore((s) => s.setPreviewMode);
   const canvasZoom = useCodaStore((s) => s.canvasZoom);
   const setCanvasZoom = useCodaStore((s) => s.setCanvasZoom);
+  const scenes = useCodaStore((s) => s.scenes);
+  const activeSceneId = useCodaStore((s) => s.activeSceneId);
+  const activeScene = scenes.find((s) => s.id === activeSceneId);
   const [copied, setCopied] = useState(false);
+
+  // Don't render toolbar over empty state (would block file picker)
+  if (!activeScene?.background?.url) return null;
 
   const handleScreenshot = async () => {
     const container = document.getElementById('studio-canvas-container');

@@ -46,7 +46,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
       return (
         <div className="flex flex-col items-center justify-center h-full w-full bg-cream-200 gap-3 p-4">
           <span className="text-[10px] tracking-widest uppercase text-ink-300">
-            {this.props.name ?? '컴포넌트'} 오류 발생
+            {this.props.name ?? 'Component'} Error
           </span>
           <p className="text-[10px] text-ink-400 font-mono max-w-xs text-center break-all">
             {this.state.error?.message ?? 'Unknown error'}
@@ -55,7 +55,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
             onClick={this.handleReset}
             className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest border border-cream-300 text-ink-500 hover:border-ink-500 hover:text-ink-900 transition-colors"
           >
-            복구 시도
+            RETRY
           </button>
         </div>
       );

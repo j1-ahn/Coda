@@ -38,7 +38,7 @@ export class PlaylistRenderJob {
     const tracks = state.audioTracks.filter((t) => t.url);
 
     if (tracks.length === 0) {
-      throw new Error('재생목록에 트랙이 없습니다.');
+      throw new Error('No tracks in playlist.');
     }
 
     const totalTracks = tracks.length;
@@ -93,7 +93,7 @@ export class PlaylistRenderJob {
       phase: 'encoding',
       phasePct: 0,
       totalPct: renderWeight,
-      message: '플레이리스트 연결 중…',
+      message: 'Concatenating playlist…',
     });
 
     const concatRes = await fetch('/api/render/concat', {
@@ -104,7 +104,7 @@ export class PlaylistRenderJob {
         format: baseOpts.format,
       }),
     });
-    if (!concatRes.ok) throw new Error('연결 렌더 세션 생성 실패');
+    if (!concatRes.ok) throw new Error('Concat session creation failed');
     const { session_id } = await concatRes.json();
     this._concatSessionId = session_id;
 
@@ -129,7 +129,7 @@ export class PlaylistRenderJob {
             phase: 'encoding',
             phasePct: pct,
             totalPct: Math.round(renderWeight + (pct / 100) * concatWeight),
-            message: `플레이리스트 연결 중… ${pct}%`,
+            message: `Concatenating playlist… ${pct}%`,
           });
         } else if (data.status === 'done') {
           const urls: RenderProgress['downloadUrls'] = {};
@@ -139,7 +139,7 @@ export class PlaylistRenderJob {
             phase: 'done',
             phasePct: 100,
             totalPct: 100,
-            message: '플레이리스트 렌더 완료! 다운로드 준비됨',
+            message: 'Playlist render complete! Ready to download',
             downloadUrls: urls,
           });
           es.close();
@@ -148,14 +148,14 @@ export class PlaylistRenderJob {
         } else if (data.status === 'error') {
           es.close();
           this._eventSource = null;
-          reject(new Error(data.message ?? '연결 렌더 실패'));
+          reject(new Error(data.message ?? 'Concat render failed'));
         }
       };
 
       es.onerror = () => {
         es.close();
         this._eventSource = null;
-        reject(new Error('SSE 연결 오류'));
+        reject(new Error('SSE connection error'));
       };
     });
   }

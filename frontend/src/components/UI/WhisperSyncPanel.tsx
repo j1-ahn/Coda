@@ -25,13 +25,13 @@ function formatTime(sec: number) {
 // ---------------------------------------------------------------------------
 
 const PHASE_LABELS: Record<string, string> = {
-  queued: '대기 중…',
-  loading_model: '모델 로딩 중…',
-  preprocessing: 'ffmpeg 전처리 중…',
-  transcribing: '음성 인식 중…',
-  done: '완료',
-  error: '오류 발생',
-  unknown: '상태 확인 중…',
+  queued: 'Queued…',
+  loading_model: 'Loading model…',
+  preprocessing: 'Preprocessing (ffmpeg)…',
+  transcribing: 'Transcribing…',
+  done: 'Done',
+  error: 'Error',
+  unknown: 'Checking status…',
 };
 
 // ---------------------------------------------------------------------------
@@ -108,7 +108,7 @@ function TranscribeProgress({
         if (!res.ok) {
           consecutiveFailures++;
           if (consecutiveFailures >= MAX_FAILURES) {
-            const msg = `백엔드 응답 없음 (HTTP ${res.status}). 서버가 실행 중인지 확인하세요.`;
+            const msg = `Backend not responding (HTTP ${res.status}). Check if the server is running.`;
             setErrorMsg(msg); onError(msg); return;
           }
           if (!cancelled) timerId = setTimeout(poll, 500);
@@ -126,7 +126,7 @@ function TranscribeProgress({
         if (p < 0) {
           consecutiveFailures++;
           if (consecutiveFailures >= MAX_FAILURES) {
-            const msg = '백엔드가 재시작되어 작업이 유실되었습니다. 다시 시도해주세요.';
+            const msg = 'Backend was restarted and the job was lost. Please try again.';
             setErrorMsg(msg); onError(msg); return;
           }
           if (!cancelled) timerId = setTimeout(poll, 500);
@@ -157,7 +157,7 @@ function TranscribeProgress({
         if (cancelled) return;
         consecutiveFailures++;
         if (consecutiveFailures >= MAX_FAILURES) {
-          const msg = '백엔드 연결 실패. 서버가 실행 중인지 확인하세요.';
+          const msg = 'Backend connection failed. Check if the server is running.';
           setErrorMsg(msg); onError(msg); return;
         }
         if (!cancelled) timerId = setTimeout(poll, 1000);
@@ -183,8 +183,8 @@ function TranscribeProgress({
     if (isLoading || errorMsg || transcribeStartRef.current === null) return null;
     const tSec = (Date.now() - transcribeStartRef.current) / 1000;
     const remaining = Math.round(estimatedSec - tSec);
-    if (remaining <= 0) return '마무리 중…';
-    return `~${remaining}s 남음`;
+    if (remaining <= 0) return 'Finishing…';
+    return `~${remaining}s left`;
   })();
 
   return (
@@ -193,7 +193,7 @@ function TranscribeProgress({
       {/* 단계 + 시간 정보 */}
       <div className="flex items-center justify-between">
         <span className="text-[10px] text-ink-500 label-caps">
-          {errorMsg ? '오류 발생' : phaseLabel}
+          {errorMsg ? 'Error' : phaseLabel}
         </span>
         <span className="text-[10px] text-ink-400 tabular-nums">
           {errorMsg ? '' : isLoading ? `${elapsed}s` : remainingLabel ?? `${pct}%`}
@@ -246,7 +246,7 @@ function TranscribeProgress({
       {/* 로딩 단계 힌트 */}
       {!errorMsg && phase === 'loading_model' && elapsed > 5 && (
         <p className="text-[9px] text-ink-300 text-center">
-          첫 실행 시 모델 로딩에 최대 1분 소요됩니다
+          First run may take up to 1 min to load the model
         </p>
       )}
 
@@ -324,10 +324,10 @@ export default function WhisperSyncPanel() {
         } catch { /* JSON 파싱 실패 */ }
 
         if (!detail) {
-          detail = res.status === 500 ? 'STT 서버 오류 — 백엔드 로그를 확인하세요'
-            : res.status === 413 ? '오디오 파일이 너무 큽니다'
-            : res.status === 503 ? 'STT 모델 로딩 중 — 잠시 후 다시 시도하세요'
-            : `음성 인식 실패 (${res.status})`;
+          detail = res.status === 500 ? 'STT server error — check backend logs'
+            : res.status === 413 ? 'Audio file too large'
+            : res.status === 503 ? 'STT model loading — try again shortly'
+            : `Transcription failed (${res.status})`;
         }
         throw new Error(detail);
       }
@@ -340,7 +340,7 @@ export default function WhisperSyncPanel() {
       );
       setAudioTrackProcessing(activeTrack.id, 'done');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '알 수 없는 오류';
+      const msg = err instanceof Error ? err.message : 'Unknown error';
       setAudioTrackProcessing(activeTrack.id, 'error', msg);
     } finally {
       setCurrentJobId(null);
@@ -365,7 +365,7 @@ export default function WhisperSyncPanel() {
       setWhisperSegments(activeTrack.id, data.segments, activeTrack.durationSec);
       if (data.warning) setTranslateWarning(data.warning);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '오류';
+      const msg = err instanceof Error ? err.message : 'Error';
       setTranslateWarning(msg);
     } finally {
       setIsTranslating(false);
@@ -376,8 +376,8 @@ export default function WhisperSyncPanel() {
   if (!activeTrack) {
     return (
       <div className="px-4 py-6 flex flex-col items-center gap-2 text-center">
-        <p className="text-[11px] text-ink-400">오디오 트랙이 없습니다</p>
-        <p className="text-[10px] text-ink-300">IMAGE 탭에서 오디오 파일을 업로드하세요</p>
+        <p className="text-[11px] text-ink-400">No audio track</p>
+        <p className="text-[10px] text-ink-300">Upload an audio file in the bottom bar</p>
       </div>
     );
   }
@@ -399,7 +399,7 @@ export default function WhisperSyncPanel() {
           </span>
           <span className="text-[10px] text-ink-300">
             {formatTime(activeTrack.durationSec)}
-            {isDone && ` · ${activeTrack.whisperSegments.length}개 세그먼트`}
+            {isDone && ` · ${activeTrack.whisperSegments.length} segments`}
           </span>
         </div>
       </div>
@@ -407,8 +407,8 @@ export default function WhisperSyncPanel() {
       {/* 파일 재업로드 필요 */}
       {needsReload && (
         <div className="px-3 py-2 bg-amber-50 border border-amber-200 text-[10px] text-amber-700">
-          페이지 새로고침 후 blob URL이 만료됐습니다.
-          <br />IMAGE 탭에서 파일을 다시 업로드해주세요.
+          Blob URL expired after page reload.
+          <br />Please re-upload the file in the bottom bar.
         </div>
       )}
 
@@ -416,7 +416,7 @@ export default function WhisperSyncPanel() {
       {activeTrack.processing === 'error' && activeTrack.error && (
         <div className="px-3 py-2 bg-red-50 border border-red-200 text-[10px] text-red-600 break-words">
           {activeTrack.error}
-          <br /><span className="text-red-400">백엔드가 실행 중인지 확인하세요 (uvicorn port 8000)</span>
+          <br /><span className="text-red-400">Check if the backend is running (uvicorn port 8000)</span>
         </div>
       )}
 
@@ -434,17 +434,17 @@ export default function WhisperSyncPanel() {
       {/* 언어 선택 */}
       {!isProcessing && (
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-ink-400 shrink-0 label-caps">언어</span>
+          <span className="text-[10px] text-ink-400 shrink-0 label-caps">Language</span>
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             className="flex-1 bg-cream-100 border border-cream-300 text-ink-900 text-[10px] px-2 py-1 outline-none focus:border-ink-500"
           >
-            <option value="auto">자동 감지</option>
-            <option value="ko">한국어 (ko)</option>
-            <option value="en">영어 (en)</option>
-            <option value="ja">일본어 (ja)</option>
-            <option value="zh">중국어 (zh)</option>
+            <option value="auto">Auto-detect</option>
+            <option value="ko">Korean (ko)</option>
+            <option value="en">English (en)</option>
+            <option value="ja">Japanese (ja)</option>
+            <option value="zh">Chinese (zh)</option>
           </select>
         </div>
       )}
@@ -461,7 +461,7 @@ export default function WhisperSyncPanel() {
             : 'bg-ink-900 text-cream-100 border-ink-900 hover:bg-ink-700'
           }`}
       >
-        {isProcessing ? '인식 중…' : isDone ? '다시 인식' : 'STT 인식 시작'}
+        {isProcessing ? 'TRANSCRIBING…' : isDone ? 'RE-TRANSCRIBE' : 'START STT'}
       </button>
 
       {/* 번역 버튼 — STT 완료 후만 표시 */}
@@ -475,7 +475,7 @@ export default function WhisperSyncPanel() {
               : 'border-cream-300 text-ink-500 hover:border-ink-500 hover:text-ink-900'
             }`}
         >
-          {isTranslating ? '번역 중…' : '한국어 번역 (Ollama)'}
+          {isTranslating ? 'TRANSLATING…' : 'TRANSLATE TO KOREAN (Ollama)'}
         </button>
       )}
 
@@ -489,7 +489,7 @@ export default function WhisperSyncPanel() {
       {/* 모델 힌트 */}
       <p className="text-[9px] text-ink-300 text-center">
         Whisper {useSettingsStore.getState().whisperModel} ·
-        설정에서 모델 변경 가능
+        Change model in Settings
       </p>
 
     </div>
