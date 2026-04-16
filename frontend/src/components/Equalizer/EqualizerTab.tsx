@@ -146,7 +146,6 @@ export default function EqualizerTab() {
             type="range" min={0} max={1} step={0.01} value={eqIntensity}
             onChange={(e) => setEqIntensity(parseFloat(e.target.value))}
             className="flex-1 h-0.5 cursor-pointer"
-            style={{ accentColor: '#1a1a16' }}
           />
           <span className="font-mono text-[10px] text-ink-300 w-8 text-right tabular-nums">
             {Math.round(eqIntensity * 100)}
@@ -162,7 +161,6 @@ export default function EqualizerTab() {
             type="range" min={0} max={1} step={0.01} value={eqOpacity}
             onChange={(e) => setEqOpacity(parseFloat(e.target.value))}
             className="flex-1 h-0.5 cursor-pointer"
-            style={{ accentColor: '#1a1a16' }}
           />
           <span className="font-mono text-[10px] text-ink-300 w-8 text-right tabular-nums">
             {Math.round(eqOpacity * 100)}

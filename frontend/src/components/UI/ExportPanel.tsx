@@ -60,7 +60,7 @@ export default function ExportPanel() {
   const handleRender = useCallback(async () => {
     const container = document.getElementById('studio-canvas-container');
     if (!container) {
-      setJobStatus({ phase: 'error', message: 'canvas container를 찾을 수 없습니다.' });
+      setJobStatus({ phase: 'error', message: 'Canvas container not found.' });
       return;
     }
 
@@ -73,7 +73,7 @@ export default function ExportPanel() {
     const audioSrc = activeTrack?.url ?? null;
     const durationSec = activeTrack?.durationSec ?? 10;
 
-    setJobStatus({ phase: 'rendering', progress: 0, message: '렌더 준비 중...' });
+    setJobStatus({ phase: 'rendering', progress: 0, message: 'Preparing render...' });
 
     const [handle, renderPromise] = startCompositeRender(container, {
       width: w,
@@ -85,7 +85,7 @@ export default function ExportPanel() {
         setJobStatus({
           phase: 'rendering',
           progress: p,
-          message: `렌더 중... ${Math.round(p * 100)}%`,
+          message: `Rendering... ${Math.round(p * 100)}%`,
         }),
     });
     renderHandleRef.current = handle;
@@ -93,14 +93,14 @@ export default function ExportPanel() {
     try {
       const blob = await renderPromise;
       if (!blob) {
-        setJobStatus({ phase: 'error', message: '렌더 취소됨' });
+        setJobStatus({ phase: 'error', message: 'Render cancelled' });
         return;
       }
       const ext = blob.type.includes('webm') ? 'webm' : 'mp4';
       const filename = `coda_export_${Date.now()}.${ext}`;
       setJobStatus({ phase: 'done', blob, filename });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '렌더 오류 발생';
+      const msg = err instanceof Error ? err.message : 'Render error';
       setJobStatus({ phase: 'error', message: msg });
     } finally {
       renderHandleRef.current = null;
@@ -112,12 +112,12 @@ export default function ExportPanel() {
   const handlePlaylistRender = useCallback(async () => {
     const container = document.getElementById('studio-canvas-container');
     if (!container) {
-      setJobStatus({ phase: 'error', message: 'canvas container를 찾을 수 없습니다.' });
+      setJobStatus({ phase: 'error', message: 'Canvas container not found.' });
       return;
     }
 
     if (audioTracks.length === 0) {
-      setJobStatus({ phase: 'error', message: '플레이리스트에 트랙이 없습니다.' });
+      setJobStatus({ phase: 'error', message: 'No tracks in playlist.' });
       return;
     }
 
@@ -135,11 +135,11 @@ export default function ExportPanel() {
       }));
 
     if (playlist.length === 0) {
-      setJobStatus({ phase: 'error', message: '재생 가능한 트랙이 없습니다.' });
+      setJobStatus({ phase: 'error', message: 'No playable tracks.' });
       return;
     }
 
-    setJobStatus({ phase: 'rendering', progress: 0, message: `플레이리스트 렌더 (1/${playlist.length})` });
+    setJobStatus({ phase: 'rendering', progress: 0, message: `Playlist render (1/${playlist.length})` });
 
     const [handle, renderPromise] = startCompositeRender(container, {
       width: w,
@@ -150,13 +150,13 @@ export default function ExportPanel() {
         setJobStatus({
           phase: 'rendering',
           progress: p,
-          message: `플레이리스트 렌더 중... ${Math.round(p * 100)}%`,
+          message: `Rendering playlist... ${Math.round(p * 100)}%`,
         }),
       onTrackChange: (idx, track) =>
         setJobStatus({
           phase: 'rendering',
           progress: 0,
-          message: `트랙 ${idx + 1}/${playlist.length}: ${track.title ?? ''}`,
+          message: `Track ${idx + 1}/${playlist.length}: ${track.title ?? ''}`,
         }),
     });
     renderHandleRef.current = handle;
@@ -164,14 +164,14 @@ export default function ExportPanel() {
     try {
       const blob = await renderPromise;
       if (!blob) {
-        setJobStatus({ phase: 'error', message: '렌더 취소됨' });
+        setJobStatus({ phase: 'error', message: 'Render cancelled' });
         return;
       }
       const ext = blob.type.includes('webm') ? 'webm' : 'mp4';
       const filename = `coda_playlist_${Date.now()}.${ext}`;
       setJobStatus({ phase: 'done', blob, filename });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '렌더 오류 발생';
+      const msg = err instanceof Error ? err.message : 'Render error';
       setJobStatus({ phase: 'error', message: msg });
     } finally {
       renderHandleRef.current = null;

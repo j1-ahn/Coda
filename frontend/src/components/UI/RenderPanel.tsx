@@ -234,7 +234,7 @@ function RenderModal({ onClose }: { onClose: () => void }) {
                 value={duration}
                 onChange={(e) => setDuration(Number(e.target.value))}
                 disabled={isRunning}
-                className="flex-1 ml-2 accent-ink-900"
+                className="flex-1 ml-2"
               />
             )}
           </SettingRow>

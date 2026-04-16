@@ -15,6 +15,7 @@ import SettingsPanel from '@/components/UI/SettingsPanel';
 import PlaylistOverlay from '@/components/UI/PlaylistOverlay';
 import MaskDrawOverlay from '@/components/Canvas/MaskDrawOverlay';
 import CanvasEmptyState from '@/components/Canvas/CanvasEmptyState';
+import CanvasQuickToolbar from '@/components/Canvas/CanvasQuickToolbar';
 import TitleHTMLOverlay from '@/components/Canvas/TitleHTMLOverlay';
 import LyricHTMLOverlay from '@/components/Canvas/LyricHTMLOverlay';
 
@@ -177,7 +178,7 @@ export default function Home() {
           <div className="flex-1 min-h-0 flex items-center justify-center bg-cream-200 overflow-hidden">
             <div
               id="studio-canvas-container"
-              className="relative bg-black"
+              className="group relative bg-black"
               style={{
                 aspectRatio: ASPECT_MAP[exportFormat],
                 maxHeight: '100%',
@@ -196,6 +197,7 @@ export default function Home() {
               {!previewMode && <EQOverlayWidget />}
               <MaskDrawOverlay />
               <CanvasEmptyState />
+              <CanvasQuickToolbar />
             </div>
           </div>
 

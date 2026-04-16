@@ -81,9 +81,9 @@ export default function PromptPanel() {
 
     try {
       // Phase 1: Fetch audio and send to librosa
-      setAnalysisPhase('오디오 분석 중… (librosa)');
+      setAnalysisPhase('Analyzing audio… (librosa)');
       const audioRes = await fetch(activeTrack.url);
-      if (!audioRes.ok) throw new Error('오디오 파일 로드 실패');
+      if (!audioRes.ok) throw new Error('Failed to load audio file');
       const audioBlob = await audioRes.blob();
 
       const formData = new FormData();
@@ -94,9 +94,9 @@ export default function PromptPanel() {
         body: formData,
       });
       if (!featRes.ok) {
-        const msg = featRes.status === 413 ? '오디오 파일이 너무 큽니다 (최대 50MB)'
-          : featRes.status === 500 ? '백엔드 서버 오류 — 서버 로그를 확인하세요'
-          : `오디오 분석 실패 (${featRes.status})`;
+        const msg = featRes.status === 413 ? 'Audio file too large (max 50MB)'
+          : featRes.status === 500 ? 'Backend server error — check server logs'
+          : `Audio analysis failed (${featRes.status})`;
         throw new Error(msg);
       }
       const featData = await featRes.json();
@@ -104,7 +104,7 @@ export default function PromptPanel() {
       setAudioFeatures(features);
 
       // Phase 2: Send features + whisper segments to Ollama
-      setAnalysisPhase('프롬프트 생성 중… (Ollama)');
+      setAnalysisPhase('Generating prompts… (Ollama)');
       const whisperSegments = activeTrack.whisperSegments ?? [];
       const genRes = await fetch(`${base}/api/audio-analysis/generate`, {
         method: 'POST',
@@ -120,9 +120,9 @@ export default function PromptPanel() {
         }),
       });
       if (!genRes.ok) {
-        const msg = genRes.status === 500 ? 'AI 모델 응답 실패 — Ollama 서버를 확인하세요'
-          : genRes.status === 404 ? 'AI 모델을 찾을 수 없습니다 — 설정에서 모델명을 확인하세요'
-          : `프롬프트 생성 실패 (${genRes.status})`;
+        const msg = genRes.status === 500 ? 'AI model failed — check Ollama server'
+          : genRes.status === 404 ? 'AI model not found — check model name in settings'
+          : `Prompt generation failed (${genRes.status})`;
         throw new Error(msg);
       }
       const genData = await genRes.json();
@@ -133,7 +133,7 @@ export default function PromptPanel() {
         scene_suggestions: genData.scene_suggestions ?? [],
       });
     } catch (e: any) {
-      setError(e.message || '분석 실패');
+      setError(e.message || 'Analysis failed');
     } finally {
       setAnalyzing(false);
       setAnalysisPhase('');
@@ -170,7 +170,7 @@ export default function PromptPanel() {
       });
     } catch (e: any) {
       if (e.name !== 'AbortError') {
-        setError(e.message || '생성 실패');
+        setError(e.message || 'Generation failed');
       }
     } finally {
       setLoading(false);
@@ -217,20 +217,20 @@ export default function PromptPanel() {
       {/* ── 입력 섹션 ───────────────────────────────────────── */}
       <div className="shrink-0 flex flex-col gap-2 p-3 border-b border-cream-300">
         <div className="flex items-center gap-2">
-          <span className="label-caps text-ink-400 text-[9px] shrink-0">주제</span>
+          <span className="label-caps text-ink-400 text-[9px] shrink-0">Topic</span>
         </div>
         <textarea
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
           rows={2}
-          placeholder="비 오는 도시의 외로운 밤"
+          placeholder="A lonely rainy night in the city"
           className="w-full resize-none bg-cream-100 border border-cream-300 text-ink-900 text-xs p-2 outline-none
             placeholder:text-ink-300 focus:border-ink-500 transition-colors leading-relaxed"
         />
         <input
           value={style}
           onChange={(e) => setStyle(e.target.value)}
-          placeholder="스타일 힌트 (선택): lo-fi, cinematic, neon..."
+          placeholder="Style hint (optional): lo-fi, cinematic, neon..."
           className="w-full bg-cream-100 border border-cream-300 text-ink-900 text-[10px] p-1.5 outline-none
             placeholder:text-ink-300 focus:border-ink-500 transition-colors"
         />
@@ -295,7 +295,7 @@ export default function PromptPanel() {
             <section className="flex flex-col gap-1.5 p-3">
               <div className="flex items-center gap-2">
                 <span className="label-caps text-[9px] text-ink-500">LYRICS</span>
-                <span className="text-[8px] text-ink-300">가사</span>
+                <span className="text-[8px] text-ink-300">Lyrics</span>
               </div>
               <div className="flex gap-1.5">
                 <pre className="flex-1 min-w-0 text-[10px] text-ink-900 leading-relaxed bg-cream-200 p-2 border border-cream-300 whitespace-pre-wrap font-sans break-words">
@@ -311,7 +311,7 @@ export default function PromptPanel() {
             <section className="flex flex-col gap-1.5 p-3">
               <div className="flex items-center gap-2">
                 <span className="label-caps text-[9px] text-ink-500">SCENE SUGGESTIONS</span>
-                <span className="text-[8px] text-ink-300">씬 구성 제안</span>
+                <span className="text-[8px] text-ink-300">Scene layout</span>
               </div>
               {result.scene_suggestions.map((s, i) => (
                 <div key={i} className="text-[10px] bg-cream-200 border border-cream-300 p-2 flex flex-col gap-0.5">
@@ -338,12 +338,12 @@ export default function PromptPanel() {
         <div className="flex-1 flex flex-col items-center justify-center gap-1.5 text-center px-4">
           <p className="text-[10px] text-ink-300 leading-relaxed">
             {activeTrack?.url
-              ? 'LISTEN & GENERATE로 현재 곡을 분석하거나\n주제를 입력하여 프롬프트를 생성합니다'
-              : '주제를 입력하면\n이미지 프롬프트 · 오디오 프롬프트 · 가사를\n한번에 생성합니다'
+              ? 'Use LISTEN & GENERATE to analyze the current track,\nor enter a topic to generate prompts'
+              : 'Enter a topic to generate\nimage prompts · audio prompts · lyrics\nall at once'
             }
           </p>
           <p className="text-[9px] text-ink-200 mt-1">
-            Ollama ({useSettingsStore.getState().ollamaModel}) 필요
+            Requires Ollama ({useSettingsStore.getState().ollamaModel})
           </p>
         </div>
       )}
@@ -352,7 +352,7 @@ export default function PromptPanel() {
       {(loading || analyzing) && !result && (
         <div className="flex-1 flex items-center justify-center">
           <span className="label-caps text-[10px] text-ink-300 animate-pulse">
-            {analyzing ? analysisPhase || '분석 중…' : 'LLM 생성 중…'}
+            {analyzing ? analysisPhase || 'Analyzing…' : 'Generating…'}
           </span>
         </div>
       )}

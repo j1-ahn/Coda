@@ -46,7 +46,6 @@ function SliderRow({ label, value, min = 0, max = 1, step = 0.01, onChange, unit
         type="range" min={min} max={max} step={step} value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
         className="flex-1 h-1 cursor-pointer"
-        style={{ accentColor: '#1a1a16' }}
       />
       <span className="font-mono text-[10px] text-ink-500 w-[30px] text-right tabular-nums">
         {value.toFixed(step < 0.1 ? 2 : 1)}{unit}

@@ -508,7 +508,7 @@ export default function TitleCustomPanel({ group = 'gfx' }: { group?: PresetGrou
                 step={0.05}
                 value={titleFontScale}
                 onChange={(e) => setTitleFontScale(Number(e.target.value))}
-                className="w-14 accent-ink-900 h-3"
+                className="w-14 h-3"
               />
               <span className="text-[8px] text-ink-500 tabular-nums w-6 text-right">
                 {Math.round(titleFontScale * 100)}%

@@ -177,9 +177,9 @@ export default function GraphicsPanel() {
       {/* ── 전체 삭제 확인 모달 ──────────────────────────────────────────── */}
       <ConfirmDialog
         open={confirmClear}
-        title="전체 씬 삭제"
-        message={`씬 ${scenes.length}개를 모두 삭제하고\n빈 씬 1개로 초기화합니다.`}
-        confirmLabel="삭제"
+        title="Clear All Scenes"
+        message={`Delete all ${scenes.length} scenes\nand reset to 1 empty scene.`}
+        confirmLabel="Delete"
         danger
         onConfirm={() => { clearAllScenes(); setScenePage(0); setConfirmClear(false); }}
         onCancel={() => setConfirmClear(false)}
@@ -188,9 +188,9 @@ export default function GraphicsPanel() {
       {/* ── 단일 씬 삭제 확인 모달 ────────────────────────────────────────── */}
       <ConfirmDialog
         open={confirmDeleteId !== null}
-        title="씬 삭제"
-        message="이 씬을 삭제하시겠습니까?\n삭제된 씬은 복구할 수 없습니다."
-        confirmLabel="삭제"
+        title="Delete Scene"
+        message="Delete this scene?\nThis action cannot be undone."
+        confirmLabel="Delete"
         danger
         onConfirm={() => { if (confirmDeleteId) removeScene(confirmDeleteId); setConfirmDeleteId(null); }}
         onCancel={() => setConfirmDeleteId(null)}
@@ -223,7 +223,7 @@ export default function GraphicsPanel() {
       <div className="p-2 shrink-0">
         {/* 헤더: 씬 수 + 페이지 네비 + 씬 추가 */}
         <div className="flex items-center justify-between px-1 mb-1.5">
-          <span className="label-caps text-[9px] text-ink-400">씬 ({scenes.length})</span>
+          <span className="label-caps text-[9px] text-ink-400">Scenes ({scenes.length})</span>
 
           <div className="flex items-center gap-1">
             {/* 페이지 ‹ › — 씬이 5개 초과일 때만 표시 */}
@@ -320,7 +320,7 @@ export default function GraphicsPanel() {
                     )
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-[8px] text-ink-300">없음</span>
+                      <span className="text-[8px] text-ink-300">Empty</span>
                     </div>
                   )}
                 </div>
@@ -373,7 +373,7 @@ export default function GraphicsPanel() {
       {/* ── 3. 트랜지션 & 지속 시간 ────────────────────────────────────── */}
       <div className="p-3 shrink-0">
         <div className="flex items-center justify-between mb-2">
-          <span className="label-caps text-[9px] text-ink-400">씬 전환 (20종)</span>
+          <span className="label-caps text-[9px] text-ink-400">Transitions (20)</span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => {
@@ -431,7 +431,7 @@ export default function GraphicsPanel() {
                 durationMs: Number(e.target.value),
               });
             }}
-            className="flex-1 accent-ink-900"
+            className="flex-1"
           />
           <span className="text-[9px] text-ink-500 w-8 text-right shrink-0">
             {(transitionDuration / 1000).toFixed(1)}s
@@ -461,7 +461,7 @@ export default function GraphicsPanel() {
       {activeScene && (
         <div className="p-3 shrink-0">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="label-caps text-[9px] text-ink-400">씬 {(scenes.indexOf(activeScene) + 1)} 재생 시간</span>
+            <span className="label-caps text-[9px] text-ink-400">Scene {(scenes.indexOf(activeScene) + 1)} Duration</span>
             <span className="text-[9px] text-ink-500">{activeScene.durationSec}s</span>
           </div>
           <input
@@ -471,7 +471,7 @@ export default function GraphicsPanel() {
             step={1}
             value={activeScene.durationSec || 10}
             onChange={(e) => updateSceneDuration(activeSceneId!, Number(e.target.value))}
-            className="w-full accent-ink-900"
+            className="w-full"
           />
           <div className="flex justify-between text-[8px] text-ink-300 mt-0.5">
             <span>1s</span><span>30s</span><span>60s</span>

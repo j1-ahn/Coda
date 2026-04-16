@@ -90,7 +90,7 @@ export default function SaveLoadPanel() {
       useCodaStore.setState(json.data, true);
       setLoadOpen(false);
     } catch {
-      setLoadError('프로젝트를 불러오는 데 실패했습니다.');
+      setLoadError('Failed to load project.');
       setTimeout(() => setLoadError(null), 3000);
     }
   };
@@ -187,9 +187,9 @@ export default function SaveLoadPanel() {
       {/* 프로젝트 삭제 확인 */}
       <ConfirmDialog
         open={confirmDeletePid !== null}
-        title="프로젝트 삭제"
-        message="이 프로젝트를 삭제하시겠습니까?\n삭제된 프로젝트는 복구할 수 없습니다."
-        confirmLabel="삭제"
+        title="Delete Project"
+        message="Delete this project?\nDeleted projects cannot be recovered."
+        confirmLabel="Delete"
         danger
         onConfirm={() => { if (confirmDeletePid) handleDelete(confirmDeletePid); }}
         onCancel={() => setConfirmDeletePid(null)}

@@ -58,6 +58,48 @@ body {
   cursor: not-allowed;
 }
 
+/* ── Unified range slider ──────────────────────────────────────────── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #d4cfc6;
+  border-radius: 0;
+  outline: none;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border: 1px solid #a88c6a;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+input[type='range']::-webkit-slider-thumb:hover {
+  background: #d4bc9e;
+}
+input[type='range']::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border: 1px solid #a88c6a;
+  border-radius: 0;
+  cursor: pointer;
+}
+input[type='range']::-moz-range-track {
+  height: 4px;
+  background: #d4cfc6;
+  border-radius: 0;
+}
+input[type='range']:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

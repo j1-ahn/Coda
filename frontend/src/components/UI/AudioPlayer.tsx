@@ -135,7 +135,7 @@ export default function AudioPlayer() {
       {/* Track name */}
       <div className="truncate text-xs text-ink-900 leading-none">
         {activeTrack ? activeTrack.fileName : (
-          <span className="text-ink-300 italic">트랙 없음</span>
+          <span className="text-ink-300 italic">No track</span>
         )}
       </div>
 
@@ -149,7 +149,6 @@ export default function AudioPlayer() {
         onChange={handleSeek}
         disabled={!hasTrack}
         className="w-full h-1 cursor-pointer disabled:opacity-30 disabled:cursor-default"
-        style={{ accentColor: '#1a1a16' }}
       />
 
       {/* Controls row */}
@@ -160,7 +159,7 @@ export default function AudioPlayer() {
           onClick={togglePlay}
           disabled={!hasTrack}
           className="w-7 h-7 flex items-center justify-center bg-ink-900 text-cream-100 hover:bg-ink-700 transition-colors disabled:opacity-30 disabled:cursor-default shrink-0"
-          aria-label={isPlaying ? '일시정지' : '재생'}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? (
             /* Pause icon */

@@ -401,7 +401,6 @@ export default function CanvasBottomBar() {
           type="range" min={0} max={totalDuration || 1} step={0.1} value={currentTime}
           onChange={handleSeek} disabled={!activeTrack}
           className="flex-1 h-0.5 appearance-none cursor-pointer disabled:opacity-30"
-          style={{ accentColor: '#1a1a16' }}
         />
 
         <span className="label-caps text-ink-300 shrink-0 text-[8px]">VOL</span>
@@ -409,7 +408,6 @@ export default function CanvasBottomBar() {
           type="range" min={0} max={1} step={0.01} value={volume}
           onChange={(e) => setVolume(parseFloat(e.target.value))}
           className="w-14 h-0.5 appearance-none cursor-pointer"
-          style={{ accentColor: '#1a1a16' }}
         />
         <span className="font-mono text-[9px] text-ink-300 tabular-nums shrink-0 w-5 text-right">
           {Math.round(volume * 100)}
@@ -419,7 +417,7 @@ export default function CanvasBottomBar() {
         <div className="w-px h-3 bg-cream-300 mx-1 shrink-0" />
         <button
           onClick={() => setPreviewMode(!previewMode)}
-          title="렌더링 출력 미리보기 (크롬 UI 숨김)"
+          title="Preview render output (hide UI chrome)"
           className={`shrink-0 flex items-center gap-1 px-2 py-0.5 border text-[8px] label-caps transition-colors ${
             previewMode
               ? 'bg-ink-900 text-cream-100 border-ink-900'
