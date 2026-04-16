@@ -5,6 +5,8 @@ import { useCodaStore } from '@/store/useCodaStore';
 export default function CanvasQuickToolbar() {
   const previewMode = useCodaStore((s) => s.previewMode);
   const setPreviewMode = useCodaStore((s) => s.setPreviewMode);
+  const canvasZoom = useCodaStore((s) => s.canvasZoom);
+  const setCanvasZoom = useCodaStore((s) => s.setCanvasZoom);
   const [copied, setCopied] = useState(false);
 
   const handleScreenshot = async () => {
@@ -47,16 +49,24 @@ export default function CanvasQuickToolbar() {
         </svg>
       </button>
 
-      {/* Fit / Reset view (placeholder) */}
-      <button
-        onClick={() => {/* TODO: zoom reset */}}
-        className="w-7 h-7 flex items-center justify-center bg-black/60 backdrop-blur-sm text-cream-300 hover:text-accent hover:bg-black/80 transition-colors"
-        title="Fit / Reset View"
-      >
-        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-        </svg>
-      </button>
+      {/* Zoom controls */}
+      <div className="flex flex-col items-center">
+        <button
+          onClick={() => setCanvasZoom(Math.min(3, canvasZoom + 0.25))}
+          className="w-7 h-6 flex items-center justify-center bg-black/60 backdrop-blur-sm text-cream-300 hover:text-accent hover:bg-black/80 transition-colors text-xs font-mono"
+          title="Zoom In"
+        >+</button>
+        <button
+          onClick={() => setCanvasZoom(1)}
+          className="w-7 h-5 flex items-center justify-center bg-black/60 backdrop-blur-sm text-cream-400 hover:text-accent hover:bg-black/80 transition-colors text-[8px] font-mono"
+          title="Reset Zoom"
+        >{Math.round(canvasZoom * 100)}%</button>
+        <button
+          onClick={() => setCanvasZoom(Math.max(0.25, canvasZoom - 0.25))}
+          className="w-7 h-6 flex items-center justify-center bg-black/60 backdrop-blur-sm text-cream-300 hover:text-accent hover:bg-black/80 transition-colors text-xs font-mono"
+          title="Zoom Out"
+        >&minus;</button>
+      </div>
 
       {/* Screenshot */}
       <button

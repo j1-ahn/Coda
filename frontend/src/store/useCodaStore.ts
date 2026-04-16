@@ -261,6 +261,10 @@ export interface CodaStore {
   setMaskDrawingMode: (v: boolean) => void;
   setLoopParam: (sceneId: string, key: string, value: number) => void;
 
+  // Canvas zoom
+  canvasZoom: number;
+  setCanvasZoom: (zoom: number) => void;
+
   // Playlist overlay
   previewMode: boolean;
   setPreviewMode: (v: boolean) => void;
@@ -412,6 +416,8 @@ export const useCodaStore = create<CodaStore>()(
     eqMirror: false,
 
     maskDrawingMode: false,
+
+    canvasZoom: 1,
 
     previewMode: false,
 
@@ -763,6 +769,9 @@ export const useCodaStore = create<CodaStore>()(
       }),
 
     // ---- Playlist actions ----
+
+    setCanvasZoom: (zoom) =>
+      set((state) => { state.canvasZoom = Math.max(0.25, Math.min(3, zoom)); }),
 
     setPreviewMode: (v) =>
       set((state) => { state.previewMode = v; }),

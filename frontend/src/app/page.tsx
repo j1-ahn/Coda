@@ -82,6 +82,8 @@ export default function Home() {
   const exportFormat   = useCodaStore((s) => s.exportFormat);
   const setExportFormat = useCodaStore((s) => s.setExportFormat);
   const previewMode    = useCodaStore((s) => s.previewMode);
+  const canvasZoom     = useCodaStore((s) => s.canvasZoom);
+  const setCanvasZoom  = useCodaStore((s) => s.setCanvasZoom);
 
   const activeTab    = useCodaStore((s) => s.activeTab);
   const setActiveTab = useCodaStore((s) => s.setActiveTab);
@@ -101,6 +103,17 @@ export default function Home() {
     });
     return () => { unsub(); if (timer) clearTimeout(timer); };
   }, [autoSaveInterval]);
+
+  // Escape key exits focus/preview mode
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && useCodaStore.getState().previewMode) {
+        useCodaStore.getState().setPreviewMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
 
   return (
     <main className="flex flex-col h-screen bg-cream-100 overflow-hidden text-ink-900">
@@ -170,12 +183,20 @@ export default function Home() {
       <div className={`flex flex-1 min-h-0 overflow-hidden ${showGallery ? 'hidden' : ''}`}>
 
         {/* LEFT: Canvas column */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <div className="relative flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Scene info bar — hidden in preview mode */}
           {!previewMode && <CanvasSceneInfoBar />}
 
           {/* Canvas area — fills remaining vertical space */}
-          <div className="flex-1 min-h-0 flex items-center justify-center bg-cream-200 overflow-hidden">
+          <div
+            className="flex-1 min-h-0 flex items-center justify-center bg-cream-200 overflow-hidden"
+            onWheel={(e) => {
+              if (!e.ctrlKey) return;
+              e.preventDefault();
+              const delta = e.deltaY > 0 ? -0.1 : 0.1;
+              setCanvasZoom(Math.max(0.25, Math.min(3, canvasZoom + delta)));
+            }}
+          >
             <div
               id="studio-canvas-container"
               className="group relative bg-black"
@@ -185,6 +206,8 @@ export default function Home() {
                 maxWidth: '100%',
                 height: exportFormat === '9:16' ? '100%' : 'auto',
                 width: exportFormat === '9:16' ? 'auto' : '100%',
+                transform: `scale(${canvasZoom})`,
+                transformOrigin: 'center center',
               }}
             >
               <ErrorBoundary name="3D Canvas">
@@ -224,7 +247,22 @@ export default function Home() {
           )}
 
           {/* Bottom bar — transport + waveform + tracks */}
-          <CanvasBottomBar />
+          {!previewMode && <CanvasBottomBar />}
+
+          {/* Focus mode exit button — appears on hover */}
+          {previewMode && (
+            <button
+              onClick={() => useCodaStore.getState().setPreviewMode(false)}
+              className="absolute top-3 left-3 z-30 w-8 h-8 flex items-center justify-center
+                bg-black/50 backdrop-blur-sm text-white/70 hover:text-white hover:bg-black/70
+                transition-all opacity-0 hover:opacity-100 focus:opacity-100"
+              title="Exit Focus Mode (Esc)"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* RIGHT: 4-tab panel — hidden in preview mode */}

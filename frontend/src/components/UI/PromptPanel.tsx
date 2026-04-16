@@ -211,6 +211,16 @@ export default function PromptPanel() {
               <FeatureBadge label="ONSET" value={`${audioFeatures.onset_density}/s`} />
             </div>
           )}
+
+          {/* Auto-Arrange — coming soon */}
+          {audioFeatures && (
+            <button
+              disabled
+              className="w-full py-1.5 label-caps text-[9px] border border-cream-300 text-ink-300 cursor-not-allowed opacity-60"
+            >
+              AUTO-ARRANGE SCENES · COMING SOON
+            </button>
+          )}
         </div>
       )}
 
