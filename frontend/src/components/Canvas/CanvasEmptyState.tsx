@@ -1,19 +1,65 @@
 'use client';
 
+import { useRef } from 'react';
 import { useCodaStore } from '@/store/useCodaStore';
 
 export default function CanvasEmptyState() {
   const scenes = useCodaStore((s) => s.scenes);
   const activeSceneId = useCodaStore((s) => s.activeSceneId);
+  const updateSceneBackground = useCodaStore((s) => s.updateSceneBackground);
   const activeScene = scenes.find((s) => s.id === activeSceneId);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // Show empty state only when active scene has no background
   if (activeScene?.background?.url) return null;
 
+  const handleFile = (file: File) => {
+    const sceneId = activeSceneId ?? scenes[0]?.id;
+    if (!sceneId) return;
+    const isVideo = file.type.startsWith('video/');
+    const url = URL.createObjectURL(file);
+    updateSceneBackground(sceneId, {
+      type: isVideo ? 'video' : 'image',
+      url,
+      fileName: file.name,
+    });
+  };
+
+  const handleClick = () => fileRef.current?.click();
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none select-none">
+    <div
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center cursor-pointer select-none"
+      onClick={handleClick}
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+    >
+      {/* Hidden file input */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={handleInputChange}
+      />
+
       {/* Subtle radial gradient background */}
-      <div className="absolute inset-0 bg-gradient-radial from-[#1a1a16]/0 via-[#1a1a16]/0 to-[#0a0a0a]/80" />
+      <div className="absolute inset-0 bg-gradient-radial from-[#1a1a16]/0 via-[#1a1a16]/0 to-[#0a0a0a]/80 pointer-events-none" />
 
       {/* Content */}
       <div className="relative flex flex-col items-center gap-6">
@@ -38,7 +84,7 @@ export default function CanvasEmptyState() {
             />
           </svg>
           <span className="text-[11px] tracking-[0.2em] uppercase text-[#9b9891]/60 font-medium">
-            Drop image to begin
+            Drop image or click to upload
           </span>
         </div>
 

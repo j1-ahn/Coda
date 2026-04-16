@@ -360,21 +360,6 @@ function SceneContent() {
 }
 
 // ---------------------------------------------------------------------------
-// Empty state overlay (no scene background loaded)
-// ---------------------------------------------------------------------------
-
-function EmptyStateOverlay() {
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-      <p className="text-[#2a2a2a] text-xs tracking-[0.3em] uppercase mb-2">
-        Drop image / video to begin
-      </p>
-      <div className="w-32 h-px bg-gradient-to-r from-transparent via-[#2a2a2a] to-transparent" />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
 
@@ -407,7 +392,6 @@ export default function MainScene() {
         <SceneContent />
       </Canvas>
 
-      {!hasBackground && <EmptyStateOverlay />}
     </div>
   );
 }
