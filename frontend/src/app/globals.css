@@ -38,24 +38,84 @@ body {
   color: #6b6760;
 }
 
-/* Accent action button */
-.btn-accent {
-  background: #c4a882;
-  color: #1a1a16;
-  border: 1px solid #a88c6a;
+/* ── Unified button system ─────────────────────────────────────────
+   Shared typography for all button variants. Apply size utilities
+   (px-*, py-*, text-*) alongside the variant class at the call site.
+   Use this instead of hand-rolling bg/text/border combos. */
+.btn-primary,
+.btn-secondary,
+.btn-accent,
+.btn-ghost,
+.btn-danger {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  transition: background 0.15s, border-color 0.15s;
+  border: 1px solid;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  cursor: pointer;
 }
-.btn-accent:hover {
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-accent:disabled,
+.btn-ghost:disabled,
+.btn-danger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Primary — dark ink on cream; main call-to-action */
+.btn-primary {
+  background: #1a1a16;
+  color: #edeae3;
+  border-color: #1a1a16;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #3a3a34;
+  border-color: #3a3a34;
+}
+
+/* Secondary — outline on cream; neutral action */
+.btn-secondary {
+  background: transparent;
+  color: #6b6760;
+  border-color: #d4cfc6;
+}
+.btn-secondary:hover:not(:disabled) {
+  color: #1a1a16;
+  border-color: #6b6760;
+}
+
+/* Accent — warm gold; emphasized action (render, start, etc) */
+.btn-accent {
+  background: #c4a882;
+  color: #1a1a16;
+  border-color: #a88c6a;
+}
+.btn-accent:hover:not(:disabled) {
   background: #d4bc9e;
   border-color: #c4a882;
 }
-.btn-accent:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+
+/* Ghost — text only on cream; tertiary action */
+.btn-ghost {
+  background: transparent;
+  color: #9b9891;
+  border-color: transparent;
+}
+.btn-ghost:hover:not(:disabled) {
+  color: #1a1a16;
+}
+
+/* Danger — red; destructive confirm */
+.btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
 }
 
 /* ── Unified range slider ──────────────────────────────────────────── */

@@ -28,26 +28,26 @@ async function loadAudioDuration(url: string): Promise<number> {
 
 function ProcessingBadge({ status }: { status: AudioTrack['processing'] }) {
   if (status === 'idle') {
-    return <span className="text-[10px] px-2 py-0.5 bg-cream-300 text-ink-500 font-medium">대기</span>;
+    return <span className="text-[10px] px-2 py-0.5 bg-cream-300 text-ink-500 font-medium">IDLE</span>;
   }
   if (status === 'uploading') {
     return (
       <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-ink-900 text-cream-100 font-medium">
-        <SpinnerIcon /> 업로드 중...
+        <SpinnerIcon /> Uploading…
       </span>
     );
   }
   if (status === 'transcribing') {
     return (
       <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-ink-900 text-cream-100 font-medium">
-        <SpinnerIcon /> 분석 중...
+        <SpinnerIcon /> Analyzing…
       </span>
     );
   }
   if (status === 'done') {
-    return <span className="text-[10px] px-2 py-0.5 bg-ink-700 text-cream-100 font-medium">완료</span>;
+    return <span className="text-[10px] px-2 py-0.5 bg-ink-700 text-cream-100 font-medium">DONE</span>;
   }
-  return <span className="text-[10px] px-2 py-0.5 border border-red-800 text-red-800 font-medium">오류</span>;
+  return <span className="text-[10px] px-2 py-0.5 border border-red-800 text-red-800 font-medium">ERROR</span>;
 }
 
 function SpinnerIcon() {
@@ -184,14 +184,14 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
       {showBackground && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="label-caps">배경 이미지</p>
+            <p className="label-caps">Background Image</p>
             {bgPreview && (
               <button
                 onClick={() => activeSceneId && updateSceneBackground(activeSceneId, { type: 'image', url: null as unknown as string, fileName: null as unknown as string })}
                 className="text-[9px] label-caps text-ink-300 hover:text-ink-900 transition-colors px-1"
-                title="배경 삭제"
+                title="Remove background"
               >
-                ✕ 삭제
+                ✕ REMOVE
               </button>
             )}
           </div>
@@ -215,15 +215,15 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
                 <img src={bgPreview} alt="bg preview" className="absolute inset-0 w-full h-full object-cover opacity-70" />
                 <div className="relative z-10 flex flex-col items-center gap-1">
                   <span className="text-[10px] bg-cream-100/80 px-2 py-0.5 text-ink-700">
-                    {activeScene?.background.fileName ?? '이미지'}
+                    {activeScene?.background.fileName ?? 'Image'}
                   </span>
-                  <span className="text-[9px] text-ink-500">클릭하여 교체</span>
+                  <span className="text-[9px] text-ink-500">Click to replace</span>
                 </div>
               </>
             ) : (
               <div className="flex flex-col items-center gap-1.5 pointer-events-none">
                 <UploadIcon className="w-5 h-5 text-ink-300" />
-                <span className="label-caps text-ink-500">드래그 앤 드롭 또는 클릭</span>
+                <span className="label-caps text-ink-500">Drag &amp; drop or click</span>
                 <span className="text-[10px] text-ink-300">PNG · JPG · WEBP · MP4</span>
               </div>
             )}
@@ -243,7 +243,7 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
       {showAudio && (
         <div className="flex-1 flex flex-col gap-2 min-h-0">
           <div className="flex items-center justify-between">
-            <SectionLabel>오디오 트랙</SectionLabel>
+            <SectionLabel>Audio Tracks</SectionLabel>
             <span className="text-[10px] text-ink-300">{audioTracks.length}/50</span>
           </div>
 
@@ -255,7 +255,7 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
               className="flex items-center justify-center gap-2 h-8 border border-dashed border-cream-300 bg-cream-50 hover:bg-cream-200 cursor-pointer transition-colors"
             >
               <UploadIcon className="w-3.5 h-3.5 text-ink-300" />
-              <span className="label-caps text-ink-500">오디오 추가 (MP3 · WAV · M4A)</span>
+              <span className="label-caps text-ink-500">Add Audio (MP3 · WAV · M4A)</span>
             </div>
           )}
 
@@ -270,7 +270,7 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
 
           <div className="flex flex-col gap-1.5 overflow-y-auto">
             {audioTracks.length === 0 && (
-              <p className="text-center label-caps text-ink-300 py-3">오디오 트랙이 없습니다</p>
+              <p className="text-center label-caps text-ink-300 py-3">No audio tracks</p>
             )}
             {audioTracks.map((track) => (
               <AudioTrackCard

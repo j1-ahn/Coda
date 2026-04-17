@@ -40,9 +40,9 @@ function formatDuration(sec: number): string {
 // ---------------------------------------------------------------------------
 
 const MODES = [
-  { id: 'simple' as const, label: 'SIMPLE', desc: '현재 곡 이름 · 우하단' },
-  { id: 'box'    as const, label: 'BOX',    desc: '앨범아트 박스 · 곡명 · 시간 · 다음곡' },
-  { id: 'list'   as const, label: 'LIST',   desc: '전체 트랙 리스트 오버레이' },
+  { id: 'simple' as const, label: 'SIMPLE', desc: 'Current track · bottom-right' },
+  { id: 'box'    as const, label: 'BOX',    desc: 'Album art · title · time · next up' },
+  { id: 'list'   as const, label: 'LIST',   desc: 'Full track list overlay' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -173,7 +173,7 @@ export default function PlaylistPanel() {
           }`}
         >
           <PlusIcon />
-          <span className="text-[9px] label-caps text-ink-400">트랙 추가 (MP3 · WAV · M4A)</span>
+          <span className="text-[9px] label-caps text-ink-400">Add Track (MP3 · WAV · M4A)</span>
         </div>
       )}
       <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" multiple className="hidden" onChange={handleInput} />
@@ -182,7 +182,7 @@ export default function PlaylistPanel() {
       {/* ── Track list ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col overflow-y-auto" style={{ maxHeight: '160px' }}>
         {audioTracks.length === 0 ? (
-          <p className="text-[9px] text-ink-300 text-center py-3 italic">트랙이 없습니다</p>
+          <p className="text-[9px] text-ink-300 text-center py-3 italic">No tracks</p>
         ) : (
           audioTracks.map((track, idx) => {
             const isActive = track.id === activeAudioTrackId;
@@ -197,7 +197,7 @@ export default function PlaylistPanel() {
                 {/* Thumbnail — click to replace */}
                 <button
                   onClick={(e) => { e.stopPropagation(); openThumbPicker(track.id); }}
-                  title="썸네일 변경"
+                  title="Change thumbnail"
                   className="w-6 h-6 shrink-0 overflow-hidden border border-cream-300 hover:border-ink-400 transition-colors bg-cream-200 flex items-center justify-center"
                 >
                   {track.thumbnailUrl ? (
@@ -219,7 +219,7 @@ export default function PlaylistPanel() {
 
                 {/* Duration / dead indicator */}
                 {track.url === null ? (
-                  <span className="text-[9px] text-red-400 tabular-nums shrink-0">만료</span>
+                  <span className="text-[9px] text-red-400 tabular-nums shrink-0">EXPIRED</span>
                 ) : (
                   <span className="text-[9px] text-ink-300 tabular-nums shrink-0">
                     {formatDuration(track.durationSec)}
@@ -243,7 +243,7 @@ export default function PlaylistPanel() {
         <div className="mx-3 mb-2 mt-1 p-2 border border-cream-300 bg-cream-200 flex items-center gap-2">
           <button
             onClick={() => openThumbPicker(activeTrack.id)}
-            title="앨범아트 변경"
+            title="Change album art"
             className="w-10 h-10 shrink-0 overflow-hidden border border-cream-300 hover:border-ink-400 transition-colors bg-cream-100 flex items-center justify-center"
           >
             {activeTrack.thumbnailUrl ? (

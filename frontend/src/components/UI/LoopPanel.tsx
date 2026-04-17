@@ -211,14 +211,14 @@ export default function LoopPanel() {
       {loopModes.depth && (
         <div className="flex flex-col gap-2 border-t border-cream-300 pt-2.5">
           <span className="label-caps text-ink-400">Depth</span>
-          <SliderRow label="근거리 +"  value={fx?.depthNearSpeed ?? 1.5}  min={0} max={3}  step={0.05} onChange={(v) => p('depthNearSpeed', v)} unit="×" />
-          <SliderRow label="원거리 −"  value={fx?.depthFarSpeed  ?? 0.8}  min={0} max={2}  step={0.05} onChange={(v) => p('depthFarSpeed', v)}  unit="×" />
+          <SliderRow label="Near +"   value={fx?.depthNearSpeed ?? 1.5}  min={0} max={3}  step={0.05} onChange={(v) => p('depthNearSpeed', v)} unit="×" />
+          <SliderRow label="Far −"    value={fx?.depthFarSpeed  ?? 0.8}  min={0} max={2}  step={0.05} onChange={(v) => p('depthFarSpeed', v)}  unit="×" />
           <SliderRow label="Haze"      value={fx?.depthHaze      ?? 0.5}  min={0} max={1}  step={0.01} onChange={(v) => p('depthHaze', v)} />
 
           {/* Depth map */}
           <div className="flex items-center gap-2 pt-0.5">
             <span className="text-[10px] text-ink-400 w-[72px] shrink-0">Depth Map</span>
-            {depthGenerating && <span className="text-[9px] text-ink-400 animate-pulse">AI 분석 중…</span>}
+            {depthGenerating && <span className="text-[9px] text-ink-400 animate-pulse">Analyzing…</span>}
             <button
               onClick={() => depthInputRef.current?.click()}
               className="text-[9px] label-caps px-2 py-1 border border-cream-300 hover:border-ink-500 text-ink-500 hover:text-ink-900 transition-colors"
@@ -277,7 +277,7 @@ export default function LoopPanel() {
             </button>
           )}
           {maskDrawingMode && (
-            <span className="text-[9px] text-ink-400">Ctrl+Click · 시작점으로 완성</span>
+            <span className="text-[9px] text-ink-400">Ctrl+Click · complete at start</span>
           )}
         </div>
       )}

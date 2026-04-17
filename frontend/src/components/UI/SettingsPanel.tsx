@@ -61,11 +61,11 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
         <div className="flex-1 overflow-y-auto divide-y divide-cream-300">
 
           {/* ── General ──────────────────────────────────────────────────── */}
-          <Section title="일반">
+          <Section title="General">
 
             <SettingRow
-              label="언어"
-              description="UI 표시 언어. 적용 후 새로고침이 필요합니다."
+              label="Language"
+              description="UI display language. Reload required after change."
             >
               <ToggleGroup
                 options={[{ value: 'ko', label: 'KO' }, { value: 'en', label: 'EN' }]}
@@ -75,14 +75,14 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
             </SettingRow>
 
             <SettingRow
-              label="자동저장 간격"
-              description="변경사항을 브라우저 localStorage에 자동 저장하는 주기입니다. '끄기' 선택 시 SAVE 버튼으로만 저장됩니다."
+              label="Auto-save"
+              description="How often to persist changes to browser localStorage. Select 'Off' to save only via the SAVE button."
             >
               <ToggleGroup
                 options={[
                   { value: '30', label: '30s' },
                   { value: '60', label: '1m' },
-                  { value: '0', label: '끄기' },
+                  { value: '0', label: 'OFF' },
                 ]}
                 value={String(store.autoSaveInterval)}
                 onChange={(v) => set('autoSaveInterval', Number(v) as AppSettings['autoSaveInterval'])}
@@ -92,11 +92,11 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           </Section>
 
           {/* ── Preview ──────────────────────────────────────────────────── */}
-          <Section title="미리보기">
+          <Section title="Preview">
 
             <SettingRow
-              label="캔버스 해상도"
-              description="Three.js 씬의 내부 렌더 해상도입니다. 720p로 낮추면 GPU 부하가 줄어 편집이 빨라집니다. 실제 렌더 품질에는 영향을 주지 않습니다."
+              label="Canvas Resolution"
+              description="Internal render resolution of the Three.js scene. Lowering to 720p reduces GPU load during editing. Does not affect final render quality."
             >
               <ToggleGroup
                 options={[
@@ -109,8 +109,8 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
             </SettingRow>
 
             <SettingRow
-              label="미리보기 DPR"
-              description="Device Pixel Ratio. 2x는 레티나 디스플레이에서 선명하지만 VRAM을 2배 사용합니다. RTX 5070에서는 2x 권장."
+              label="Preview DPR"
+              description="Device Pixel Ratio. 2x is sharper on retina displays but doubles VRAM usage. 2x recommended on RTX 5070."
             >
               <ToggleGroup
                 options={[{ value: '1', label: '1x' }, { value: '2', label: '2x' }]}
@@ -122,11 +122,11 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           </Section>
 
           {/* ── Render ───────────────────────────────────────────────────── */}
-          <Section title="렌더링">
+          <Section title="Render">
 
             <SettingRow
-              label="NVENC 모드"
-              description="Auto: NVENC 사용 가능 시 자동 선택. NVENC: RTX GPU 전용 하드웨어 인코더 강제 사용 (빠름, 낮은 CPU). CPU: libx264 소프트웨어 인코딩 (NVENC 오류 시 폴백)."
+              label="NVENC Mode"
+              description="Auto: use NVENC if available. NVENC: force RTX hardware encoder (fastest, low CPU). CPU: libx264 software encode (fallback when NVENC fails)."
             >
               <ToggleGroup
                 options={[
@@ -140,23 +140,23 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
             </SettingRow>
 
             <SettingRow
-              label="FFmpeg 경로"
-              description="시스템 PATH에 ffmpeg가 없을 경우 절대 경로를 입력합니다. 비워두면 PATH에서 자동으로 찾습니다. 예: C:\ffmpeg\bin\ffmpeg.exe"
+              label="FFmpeg Path"
+              description="Absolute path to ffmpeg if not on system PATH. Leave empty to auto-detect. Example: C:\ffmpeg\bin\ffmpeg.exe"
             >
               <TextInput
                 value={store.ffmpegPath}
-                placeholder="(시스템 PATH 사용)"
+                placeholder="(using system PATH)"
                 onChange={(v) => set('ffmpegPath', v)}
               />
             </SettingRow>
 
             <SettingRow
-              label="출력 폴더"
-              description="렌더 완료 후 백엔드가 영상을 저장하는 경로입니다. 비워두면 백엔드 실행 디렉터리의 render_tmp/ 폴더가 사용됩니다."
+              label="Output Folder"
+              description="Where the backend writes finished renders. Leaves empty to use render_tmp/ in the backend working directory."
             >
               <TextInput
                 value={store.renderOutputPath}
-                placeholder="(기본: render_tmp/)"
+                placeholder="(default: render_tmp/)"
                 onChange={(v) => set('renderOutputPath', v)}
               />
             </SettingRow>
@@ -164,11 +164,11 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           </Section>
 
           {/* ── AI Models ────────────────────────────────────────────────── */}
-          <Section title="AI 모델">
+          <Section title="AI Models">
 
             <SettingRow
-              label="Whisper 모델"
-              description="STT(음성→가사) 정확도와 VRAM 사용량 트레이드오프입니다. large-v3: 최고 품질, ~3GB VRAM. base: 빠름, ~1GB. tiny: 즉시, ~200MB. RTX 5070(12GB)에서는 large-v3 권장."
+              label="Whisper Model"
+              description="STT (speech-to-lyrics) accuracy vs VRAM trade-off. large-v3: best quality, ~3GB VRAM. base: fast, ~1GB. tiny: instant, ~200MB. large-v3 recommended on RTX 5070 (12GB)."
             >
               <ToggleGroup
                 options={[
@@ -188,8 +188,8 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           <Section title="LLM (Ollama)">
 
             <SettingRow
-              label="Ollama 모델"
-              description="PR 탭(프롬프트 생성) 및 오디오 분석에 사용할 Ollama 모델입니다. gemma3:4b 권장. 로컬에 설치된 모델명을 입력하세요."
+              label="Ollama Model"
+              description="Model used by the Prompt tab and audio analysis. gemma3:4b recommended. Enter a locally-installed model name."
             >
               <TextInput
                 value={store.ollamaModel}
@@ -199,8 +199,8 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
             </SettingRow>
 
             <SettingRow
-              label="서버 상태"
-              description="Ollama 서버 연결 상태를 확인합니다. 연결 실패 시 터미널에서 'ollama serve'를 실행하세요."
+              label="Server Status"
+              description="Check Ollama server connection. If it fails, run 'ollama serve' in a terminal."
             >
               <OllamaHealthCheck />
             </SettingRow>
@@ -209,13 +209,13 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
 
 
           {/* ── V2 placeholder ───────────────────────────────────────────── */}
-          <Section title="V2 예정 기능">
+          <Section title="Coming in V2">
             <div className="px-4 py-3 flex flex-col gap-1.5">
               {[
-                '프로젝트 기본 템플릿 — 새 프로젝트 생성 시 VFX·타이틀 프리셋 자동 적용',
-                '단축키 커스텀 — TAP 모드 키 재매핑 (현재: [ ] space)',
-                '씬 타임라인 — 다중 씬 구간 편집',
-                '플레이리스트 연속 렌더 — 전체 앨범 단일 영상 출력',
+                'Project templates — auto-apply VFX/title presets on new project',
+                'Custom shortcuts — remap TAP mode keys (currently: [ ] space)',
+                'Scene timeline — multi-scene segment editing',
+                'Continuous playlist render — full album as a single video',
               ].map((item) => (
                 <div key={item} className="flex items-start gap-2 opacity-40">
                   <span className="text-ink-300 text-[9px] mt-0.5 shrink-0">—</span>
@@ -233,14 +233,14 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
             onClick={() => { store.reset(); }}
             className="text-[10px] label-caps text-ink-300 hover:text-ink-500 transition-colors"
           >
-            기본값으로 초기화
+            Reset to defaults
           </button>
           <button
             onClick={onClose}
             className="px-4 py-1.5 label-caps text-[11px] bg-ink-900 text-cream-100
               border border-ink-900 hover:bg-ink-700 transition-colors"
           >
-            닫기
+            CLOSE
           </button>
         </div>
 
@@ -284,15 +284,15 @@ function OllamaHealthCheck() {
             : 'border-cream-300 text-ink-500 hover:border-ink-500 hover:text-ink-900'
         }`}
       >
-        {status === 'checking' ? '확인 중…' : '연결 테스트'}
+        {status === 'checking' ? 'Checking…' : 'Test connection'}
       </button>
       {status === 'ok' && (
         <span className="text-[9px] text-green-600 font-medium">
-          연결됨 {model && `(${model})`}
+          Connected {model && `(${model})`}
         </span>
       )}
       {status === 'fail' && (
-        <span className="text-[9px] text-red-500 font-medium">연결 실패</span>
+        <span className="text-[9px] text-red-500 font-medium">Connection failed</span>
       )}
     </div>
   );

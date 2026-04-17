@@ -124,7 +124,7 @@ function RenderModal({ onClose }: { onClose: () => void }) {
 
     const job = new RenderJob();
     jobRef.current = job;
-    setProgress({ phase: 'preparing', phasePct: 0, totalPct: 0, message: '준비 중…' });
+    setProgress({ phase: 'preparing', phasePct: 0, totalPct: 0, message: 'Preparing…' });
 
     try {
       await job.start(opts, setProgress);
@@ -133,7 +133,7 @@ function RenderModal({ onClose }: { onClose: () => void }) {
         ...(prev ?? { phase: 'error', phasePct: 0, totalPct: 0, message: '' }),
         phase: 'error',
         error: err instanceof Error ? err.message : String(err),
-        message: '렌더 실패',
+        message: 'Render failed',
       }));
     }
   }, [fps, format, quality, duration, isRunning]);
@@ -143,7 +143,7 @@ function RenderModal({ onClose }: { onClose: () => void }) {
 
     const job = new PlaylistRenderJob();
     playlistJobRef.current = job;
-    setProgress({ phase: 'preparing', phasePct: 0, totalPct: 0, message: '플레이리스트 렌더 준비 중…' });
+    setProgress({ phase: 'preparing', phasePct: 0, totalPct: 0, message: 'Preparing playlist render…' });
 
     try {
       await job.start({ fps, format, quality }, setProgress);
@@ -152,7 +152,7 @@ function RenderModal({ onClose }: { onClose: () => void }) {
         ...(prev ?? { phase: 'error', phasePct: 0, totalPct: 0, message: '' }),
         phase: 'error',
         error: err instanceof Error ? err.message : String(err),
-        message: '플레이리스트 렌더 실패',
+        message: 'Playlist render failed',
       }));
     }
   }, [fps, format, quality, isRunning]);
@@ -241,13 +241,13 @@ function RenderModal({ onClose }: { onClose: () => void }) {
 
           {/* Quality hint */}
           <div className="text-[9px] text-ink-300 label-caps">
-            {quality === 'high' ? '8 Mbps — YouTube 권장' : '4 Mbps — 균형'}
+            {quality === 'high' ? '8 Mbps — YouTube recommended' : '4 Mbps — Balanced'}
             {' · '}
             {format === 'both'
-              ? '16:9 + 9:16 크롭 (2개 파일)'
+              ? '16:9 + 9:16 crop (2 files)'
               : format === '9:16'
-              ? '세로형 Shorts'
-              : '가로형 풀버전'}
+              ? 'Vertical Shorts'
+              : 'Horizontal full'}
           </div>
         </div>
 
@@ -274,7 +274,7 @@ function RenderModal({ onClose }: { onClose: () => void }) {
         {/* Download links */}
         {progress?.phase === 'done' && progress.downloadUrls && (
           <div className="px-4 py-3 flex flex-col gap-2 border-b border-cream-300">
-            <span className="label-caps text-ink-300 text-[9px]">다운로드</span>
+            <span className="label-caps text-ink-300 text-[9px]">Download</span>
             <div className="flex gap-2">
               {progress.downloadUrls['16-9'] && (
                 <button
@@ -306,7 +306,7 @@ function RenderModal({ onClose }: { onClose: () => void }) {
               className="px-4 py-1.5 label-caps text-[11px] border border-cream-300
                 text-ink-500 hover:border-red-400 hover:text-red-500 transition-colors"
             >
-              중단
+              ABORT
             </button>
           ) : (
             <>
@@ -315,7 +315,7 @@ function RenderModal({ onClose }: { onClose: () => void }) {
                 className="px-4 py-1.5 label-caps text-[11px] border border-cream-300
                   text-ink-500 hover:text-ink-900 hover:border-ink-500 transition-colors"
               >
-                닫기
+                CLOSE
               </button>
               {hasMultipleTracks && (
                 <button

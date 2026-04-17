@@ -116,7 +116,7 @@ function DraggableOverlay({ children, canvasSelector = '#studio-canvas-container
       {!previewMode && (
         <div
           onMouseDown={onResizeDown}
-          title="드래그: 크기 조절 | 휠: 확대/축소"
+          title="Drag: resize | Wheel: zoom"
           style={{
             position: 'absolute',
             bottom: -6,
@@ -161,7 +161,7 @@ function ThumbClickZone({ track }: { track: AudioTrack }) {
       <button
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
-        title="앨범아트 변경"
+        title="Change album art"
         className="w-full h-full"
       >
         {track.thumbnailUrl

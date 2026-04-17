@@ -140,7 +140,7 @@ function SegmentRow({
         onChange={(e) => onTextChange(e.target.value)}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
-        placeholder="가사 입력..."
+        placeholder="Enter lyrics..."
         className={`flex-1 min-w-0 bg-transparent outline-none text-xs py-0.5 border-b transition-colors
           ${isActive ? 'border-ink-400 text-ink-900 font-medium' : 'border-transparent text-ink-700'}
           focus:border-ink-500 placeholder:text-ink-300`}
@@ -338,7 +338,7 @@ export default function SubtitleEditor() {
 
         <button
           onClick={handleSplit}
-          title="현재 재생 위치에서 세그먼트 분할"
+          title="Split segment at current playback position"
           className="px-2 py-0.5 label-caps border border-cream-300 text-ink-500 hover:border-ink-500 hover:text-ink-900 transition-colors text-[9px]"
         >
           SPLIT
