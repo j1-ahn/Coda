@@ -43,9 +43,31 @@ const config: Config = {
         'coda-fg-dim': '#888888',
       },
       fontFamily: {
+        // Body / UI — dense app surfaces. Keep neutral, readable at small sizes.
         sans: ['Inter', 'Pretendard', 'sans-serif'],
-        serif: ['Georgia', 'serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        // Display / brand moments — editorial warmth. Instrument Serif is the
+        // character carrier (logo, empty states, onboarding). Georgia as
+        // fallback keeps the italic cadence if the web font fails.
+        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+        // Explicit display alias for intent clarity at call sites.
+        display: ['"Instrument Serif"', 'Georgia', 'serif'],
+        // Tabular numerics, timecodes, paths.
+        mono: ['"JetBrains Mono"', 'monospace'],
+      },
+      // Modular type scale (rem-based, fixed — this is an app UI, not content).
+      // Pair with font-family and color for hierarchy; don't rely on size alone.
+      //   caption  10px   → label-caps, meta
+      //   tiny     11px   → timestamps, badges
+      //   small    12px   → secondary UI body
+      //   base     14px   → primary UI body
+      //   lg       16px   → section body
+      //   xl       20px   → onboarding heading
+      //   2xl      24px   → modal titles
+      //   3xl      32px   → peak moments
+      //   4xl      44px   → empty-state display
+      fontSize: {
+        'caption': ['0.625rem', { lineHeight: '1.4', letterSpacing: '0.14em' }],
+        'tiny':    ['0.6875rem', { lineHeight: '1.4' }],
       },
     },
   },

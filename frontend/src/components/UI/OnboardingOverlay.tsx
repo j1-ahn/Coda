@@ -28,7 +28,7 @@ export default function OnboardingOverlay() {
       <div className="bg-[#edeae3] border border-[#d4cfc6] shadow-2xl w-[420px] max-w-[90vw] flex flex-col">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-[#d4cfc6]">
-          <span className="font-serif italic text-[#1a1a16] text-xl tracking-tight">
+          <span className="font-serif italic text-[#1a1a16] text-3xl tracking-tight leading-none">
             Coda Studio
           </span>
           <p className="mt-1 text-[11px] text-[#6b6760] leading-relaxed">

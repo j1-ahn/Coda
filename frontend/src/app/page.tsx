@@ -138,7 +138,7 @@ export default function Home() {
       {/* ── Header — hidden in preview mode */}
       <header className={`flex items-center justify-between px-5 py-2.5 border-b border-cream-300 shrink-0 bg-cream-100 z-10 ${previewMode ? 'hidden' : ''}`}>
         <div className="flex items-center gap-3">
-          <span className="font-serif italic text-ink-900 text-base tracking-tight select-none">
+          <span className="font-serif italic text-ink-900 text-xl tracking-tight leading-none select-none">
             {titleText}
           </span>
           <span className="text-cream-300 text-xs">|</span>

@@ -64,7 +64,7 @@ export default function CanvasEmptyState() {
       {/* Content */}
       <div className="relative flex flex-col items-center gap-6">
         {/* Logo */}
-        <span className="font-serif italic text-[#c4a882]/40 text-4xl tracking-tight">
+        <span className="font-serif italic text-[#c4a882]/50 text-[44px] tracking-tight leading-none">
           Coda
         </span>
 
