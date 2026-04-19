@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useCodaStore, getSceneAtTime } from '@/store/useCodaStore';
 import { eqAnalyserRef } from '@/lib/eqAnalyserRef';
+import { PlayIcon, PauseIcon, UploadIcon, PreviewIcon } from './canvasBottomBarIcons';
+import { SceneTimelineBar } from './SceneTimelineBar';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -462,85 +464,4 @@ export default function CanvasBottomBar() {
       </div>
     </div>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Scene Timeline Bar
-// ---------------------------------------------------------------------------
-
-const SCENE_COLORS = [
-  'bg-ink-900', 'bg-ink-700', 'bg-ink-500', 'bg-ink-400',
-  'bg-amber-700', 'bg-emerald-700', 'bg-blue-700', 'bg-rose-700',
-];
-
-import type { Scene } from '@/store/useCodaStore';
-
-function SceneTimelineBar({
-  scenes,
-  activeSceneId,
-  totalDuration,
-  currentTime,
-  onClickScene,
-}: {
-  scenes: Scene[];
-  activeSceneId: string | null;
-  totalDuration: number;
-  currentTime: number;
-  onClickScene: (sceneId: string) => void;
-}) {
-  const sorted = [...scenes].sort((a, b) => a.order - b.order);
-  const playheadPct = totalDuration > 0 ? Math.min((currentTime / totalDuration) * 100, 100) : 0;
-
-  return (
-    <div className="relative h-5 flex items-stretch border-t border-cream-300 bg-cream-200">
-      {sorted.map((scene, idx) => {
-        const pct = totalDuration > 0 ? ((scene.durationSec || 0) / totalDuration) * 100 : 0;
-        if (pct <= 0) return null;
-        const isActive = scene.id === activeSceneId;
-        const colorClass = SCENE_COLORS[idx % SCENE_COLORS.length];
-        return (
-          <button
-            key={scene.id}
-            onClick={() => onClickScene(scene.id)}
-            className={`relative flex items-center justify-center text-[8px] label-caps transition-opacity
-              ${isActive ? 'opacity-100' : 'opacity-50 hover:opacity-80'}
-              ${colorClass} text-cream-100
-              ${idx > 0 ? 'border-l border-cream-300' : ''}`}
-            style={{ width: `${pct}%` }}
-            title={`Scene ${idx + 1} — ${(scene.durationSec || 0).toFixed(1)}s`}
-          >
-            S{idx + 1}
-          </button>
-        );
-      })}
-      {/* Playhead indicator */}
-      <div
-        className="absolute top-0 bottom-0 w-px bg-red-500 pointer-events-none z-10"
-        style={{ left: `${playheadPct}%` }}
-      />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Icons
-// ---------------------------------------------------------------------------
-
-function PlayIcon() {
-  return <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M8 5.14v14l11-7-11-7z" /></svg>;
-}
-function PauseIcon() {
-  return <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>;
-}
-function UploadIcon() {
-  return (
-    <svg className="w-3 h-3 text-ink-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 7.5m0 0L7.5 12m4.5-4.5V21" />
-    </svg>
-  );
-}
-function PreviewIcon({ active }: { active: boolean }) {
-  return active
-    ? <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth={2} strokeLinecap="round" fill="none"/></svg>
-    : <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
 }
