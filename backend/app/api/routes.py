@@ -18,6 +18,15 @@ from app.api.audio_analysis_router import router as audio_analysis_router
 # 루트 API 라우터
 api_router = APIRouter()
 
+
+# Lightweight /api/health — used by frontend to probe backend liveness.
+# Returns cheaply without touching any model. Distinct from /health (root)
+# so Next.js rewrite (/api/* → backend) can forward it transparently.
+@api_router.get("/health", tags=["system"])
+async def api_health() -> dict:
+    return {"status": "ok"}
+
+
 api_router.include_router(whisper_router)          # /api/whisper
 api_router.include_router(ollama_router)           # /api/ollama
 api_router.include_router(vision_router)           # /api/vision

@@ -21,7 +21,9 @@ async function extractThumbnail(file: File): Promise<string | null> {
     const meta = await parseBlob(file, { skipPostHeaders: true });
     const pic = meta.common.picture?.[0];
     if (!pic) return null;
-    const blob = new Blob([pic.data], { type: pic.format });
+    // music-metadata types pic.data as Buffer; cast through Uint8Array for
+    // BlobPart compatibility under strict TS lib.dom typings.
+    const blob = new Blob([new Uint8Array(pic.data)], { type: pic.format });
     return URL.createObjectURL(blob);
   } catch {
     return null;
@@ -66,16 +68,34 @@ export default function PlaylistPanel() {
   const thumbTargetId   = useRef<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
-  // ── 오디오 파일 추가 + ID3 자동 추출 ───────────────────────────────────────
+  // ── 혼합 드롭: 오디오는 트랙으로, 이미지는 썸네일로 ─────────────────────────
+  //
+  // Drop behavior — one action, complete playlist:
+  //   - Audio files → added as tracks (ID3 art auto-extracted)
+  //   - Image files → assigned as thumbnails to tracks missing art.
+  //     Preference order: (1) filename stem match (song.mp3 ↔ song.jpg),
+  //     (2) positional fill for remaining art-less tracks, in drop order.
+  //
+  // This means users can select both MP3s and JPGs in one go and get a
+  // ready-to-render playlist without per-track art clicks.
   const handleFiles = useCallback(async (files: FileList) => {
-    const remaining = 50 - audioTracks.length;
-    const toAdd = Array.from(files).slice(0, remaining);
-    for (const file of toAdd) {
-      if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|m4a|ogg|flac|aac)$/i)) continue;
-      const url = URL.createObjectURL(file);
-      const id = addAudioTrack(file.name, url);
+    const all       = Array.from(files);
+    const audioRx   = /\.(mp3|wav|m4a|ogg|flac|aac)$/i;
+    const audioIn   = all.filter((f) => f.type.startsWith('audio/') || audioRx.test(f.name));
+    const imageIn   = all.filter((f) => f.type.startsWith('image/'));
 
-      // ID3 썸네일 자동 추출 (비동기, 실패해도 무시)
+    // 1. Add audio tracks (respect 50-track cap)
+    const remaining = 50 - audioTracks.length;
+    const audioToAdd = audioIn.slice(0, remaining);
+    const addedTrackIds: { id: string; stem: string }[] = [];
+
+    for (const file of audioToAdd) {
+      const url  = URL.createObjectURL(file);
+      const id   = addAudioTrack(file.name, url);
+      const stem = file.name.replace(/\.[^.]+$/, '').toLowerCase();
+      addedTrackIds.push({ id, stem });
+
+      // ID3 art — non-blocking, best-effort
       extractThumbnail(file).then((thumbUrl) => {
         if (thumbUrl) useCodaStore.getState().setTrackThumbnail(id, thumbUrl);
       });
@@ -84,7 +104,39 @@ export default function PlaylistPanel() {
       useCodaStore.getState().setWhisperSegments(id, [], dur);
       useCodaStore.getState().setAudioTrackProcessing(id, 'idle');
     }
-  }, [audioTracks.length, addAudioTrack]);
+
+    // 2. Distribute images. Prefer filename-stem match against tracks that
+    //    currently lack art (either freshly added OR pre-existing).
+    if (imageIn.length === 0) return;
+
+    const getTrack = (id: string) => useCodaStore.getState().audioTracks.find((t) => t.id === id);
+    const artlessIds = useCodaStore.getState().audioTracks
+      .filter((t) => !t.thumbnailUrl)
+      .map((t) => t.id);
+    const claimed = new Set<string>();
+
+    const pools = [...imageIn];
+
+    // Pass 1: filename-stem match against tracks added this drop
+    for (const img of [...pools]) {
+      const imgStem = img.name.replace(/\.[^.]+$/, '').toLowerCase();
+      const target = addedTrackIds.find(({ id, stem }) =>
+        !claimed.has(id) && !getTrack(id)?.thumbnailUrl && stem === imgStem);
+      if (target) {
+        setTrackThumbnail(target.id, URL.createObjectURL(img));
+        claimed.add(target.id);
+        pools.splice(pools.indexOf(img), 1);
+      }
+    }
+
+    // Pass 2: positional fill — any remaining art-less track, any leftover image
+    for (const img of pools) {
+      const targetId = artlessIds.find((id) => !claimed.has(id) && !getTrack(id)?.thumbnailUrl);
+      if (!targetId) break;
+      setTrackThumbnail(targetId, URL.createObjectURL(img));
+      claimed.add(targetId);
+    }
+  }, [audioTracks.length, addAudioTrack, setTrackThumbnail]);
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
@@ -173,10 +225,10 @@ export default function PlaylistPanel() {
           }`}
         >
           <PlusIcon />
-          <span className="text-[9px] label-caps text-ink-400">Add Track (MP3 · WAV · M4A)</span>
+          <span className="text-[9px] label-caps text-ink-400">Drop audio + art</span>
         </div>
       )}
-      <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" multiple className="hidden" onChange={handleInput} />
+      <input ref={fileInputRef} type="file" accept="audio/*,image/*,.mp3,.wav,.m4a,.ogg,.flac,.aac" multiple className="hidden" onChange={handleInput} />
       <input ref={thumbInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbInput} />
 
       {/* ── Track list ─────────────────────────────────────────────────────── */}

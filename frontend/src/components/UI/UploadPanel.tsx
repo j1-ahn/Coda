@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from 'react';
 import { useCodaStore, AudioTrack } from '@/store/useCodaStore';
+import { apiFetchJson, humanizeError } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -165,13 +166,14 @@ export default function UploadPanel({ mode = 'all' }: { mode?: 'all' | 'backgrou
       form.append('file', blob, track.fileName);
       const { useSettingsStore } = await import('@/store/useSettingsStore');
       form.append('model', useSettingsStore.getState().whisperModel);
-      const res = await fetch('http://localhost:8000/api/whisper/transcribe', { method: 'POST', body: form });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setWhisperSegments(track.id, data.segments ?? [], data.duration ?? track.durationSec);
+      // Bypass Next.js proxy — big audio payloads go straight to the backend.
+      const data = await apiFetchJson<{ segments?: unknown[]; duration?: number }>(
+        '/api/whisper/transcribe',
+        { method: 'POST', body: form, absolute: true },
+      );
+      setWhisperSegments(track.id, (data.segments as never[]) ?? [], data.duration ?? track.durationSec);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '알 수 없는 오류';
-      setAudioTrackProcessing(track.id, 'error', msg);
+      setAudioTrackProcessing(track.id, 'error', humanizeError(err));
     }
   };
 

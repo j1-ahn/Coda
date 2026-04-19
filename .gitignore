@@ -3,6 +3,8 @@ node_modules/
 frontend/.next/
 frontend/out/
 frontend/.env*.local
+frontend/tsconfig.tsbuildinfo
+.claude/settings.local.json
 
 # Python
 __pycache__/

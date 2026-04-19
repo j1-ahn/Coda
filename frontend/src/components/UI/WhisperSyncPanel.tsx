@@ -13,6 +13,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCodaStore } from '@/store/useCodaStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { apiFetchJson, humanizeError } from '@/lib/api';
 
 function formatTime(sec: number) {
   const m = Math.floor(sec / 60);
@@ -309,39 +310,21 @@ export default function WhisperSyncPanel() {
       form.append('job_id', jobId);
       if (language !== 'auto') form.append('language', language);
 
-      // 대용량 파일은 Next.js proxy를 거치지 않고 백엔드 직접 호출
-      const res = await fetch('http://localhost:8000/api/whisper/transcribe', {
-        method: 'POST',
-        body: form,
-      });
-
-      if (!res.ok) {
-        // 백엔드가 반환한 에러 메시지 추출 → 사용자 친화적 변환
-        let detail = '';
-        try {
-          const errBody = await res.json();
-          if (errBody.detail) detail = errBody.detail;
-        } catch { /* JSON 파싱 실패 */ }
-
-        if (!detail) {
-          detail = res.status === 500 ? 'STT server error — check backend logs'
-            : res.status === 413 ? 'Audio file too large'
-            : res.status === 503 ? 'STT model loading — try again shortly'
-            : `Transcription failed (${res.status})`;
-        }
-        throw new Error(detail);
-      }
-
-      const data = await res.json();
+      // Bypass Next.js proxy — big audio payloads go straight to the backend.
+      // apiFetchJson auto-extracts `detail` from error responses and normalizes
+      // common statuses (503 model loading, 413 too large, offline, etc).
+      const data = await apiFetchJson<{ segments?: unknown[]; duration?: number }>(
+        '/api/whisper/transcribe',
+        { method: 'POST', body: form, absolute: true },
+      );
       setWhisperSegments(
         activeTrack.id,
-        data.segments ?? [],
+        (data.segments as never[]) ?? [],
         data.duration ?? activeTrack.durationSec,
       );
       setAudioTrackProcessing(activeTrack.id, 'done');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setAudioTrackProcessing(activeTrack.id, 'error', msg);
+      setAudioTrackProcessing(activeTrack.id, 'error', humanizeError(err));
     } finally {
       setCurrentJobId(null);
     }

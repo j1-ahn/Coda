@@ -28,6 +28,7 @@ import STTSubtitleTab from '@/components/Tabs/STTSubtitleTab';
 import type { SidebarTabId } from '@/store/useCodaStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import OnboardingOverlay from '@/components/UI/OnboardingOverlay';
+import BackendStatusDot from '@/components/UI/BackendStatusDot';
 
 
 const EQOverlayWidget = dynamic(
@@ -143,6 +144,7 @@ export default function Home() {
           </span>
           <span className="text-cream-300 text-xs">|</span>
           <span className="text-ink-300 text-[10px]">v0.3.0</span>
+          <BackendStatusDot />
         </div>
 
         <div className="flex items-center gap-3">

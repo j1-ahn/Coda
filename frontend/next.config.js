@@ -1,4 +1,9 @@
 /** @type {import('next').NextConfig} */
+
+// Backend origin — driven by .env.local (see frontend/.env.example).
+// Falls back to localhost:8000 to preserve current defaults.
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
 const nextConfig = {
   // Three.js / R3F transpile
   transpilePackages: ['three'],
@@ -19,7 +24,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8000/api/:path*',
+        destination: `${BACKEND_URL}/api/:path*`,
       },
     ];
   },
