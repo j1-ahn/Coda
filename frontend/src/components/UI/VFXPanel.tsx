@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useCodaStore, VFXParams } from '@/store/useCodaStore';
+import { SliderRow } from '@/components/primitives';
 
 // ---------------------------------------------------------------------------
 // Toggle Switch
@@ -25,49 +26,6 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
         `}
       />
     </button>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Slider
-// ---------------------------------------------------------------------------
-
-interface SliderRowProps {
-  label: string;
-  value: number;
-  min?: number;
-  max?: number;
-  step?: number;
-  onChange: (v: number) => void;
-  disabled?: boolean;
-}
-
-function SliderRow({ label, value, min = 0, max = 1, step = 0.01, onChange, disabled = false }: SliderRowProps) {
-  const pct = Math.round(((value - min) / (max - min)) * 100);
-
-  return (
-    <div className={`flex items-center gap-2 transition-opacity ${disabled ? 'opacity-30 pointer-events-none' : ''}`}>
-      <span className="text-[10px] text-[#6b6760] w-[64px] shrink-0">{label}</span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="flex-1 h-1.5 appearance-none cursor-pointer
-          [&::-webkit-slider-thumb]:appearance-none
-          [&::-webkit-slider-thumb]:w-3
-          [&::-webkit-slider-thumb]:h-3
-          [&::-webkit-slider-thumb]:bg-ink-900
-          [&::-webkit-slider-thumb]:cursor-pointer
-          focus:outline-none"
-        style={{
-          background: `linear-gradient(to right, #1a1a16 0%, #1a1a16 ${pct}%, #d4cfc6 ${pct}%, #d4cfc6 100%)`,
-        }}
-      />
-      <span className="font-mono text-[11px] text-ink-500 w-[28px] text-right tabular-nums">{value.toFixed(2)}</span>
-    </div>
   );
 }
 
